@@ -195,10 +195,9 @@ body.touch #acts{display:grid} body.touch #joy{display:block} body.touch #keyhel
 .toggle[aria-pressed="true"]{border-color:var(--leaf);color:var(--leaf)}
 #menuMsg{min-height:1.2em;color:var(--amber);font-size:13px}
 #saveInfo{font-size:12.5px;color:var(--muted)}
-}
 /* ---------- compact (phones) ---------- */
-.touchHelp{display:none}
-body.compact .touchHelp{display:block}
+#intro .touchHelp{display:none}
+body.compact #intro .touchHelp{display:block}
 body.compact .deskHelp{display:none}
 body.compact .card{padding:16px;gap:10px}
 body.compact .card h1{font-size:36px}
@@ -255,6 +254,34 @@ body.touch .ws:not(.on){display:none}
 body.touch.more #wbar{display:none}
 body.touch #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 300px);min-width:0;max-width:calc(100vw - 24px);font-size:13px}
 body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 14px);max-width:40vw}
+/* ---------- profiles & briefing ---------- */
+.av{width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--ink);border:2px solid var(--line-hi);flex:0 0 auto}
+.av.big{width:72px;height:72px}
+.av.tiny{width:22px;height:22px;border-width:1px}
+.profchip{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--ink)}
+.profchip div{flex:1;min-width:0;display:flex;flex-direction:column}
+.profchip b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profchip span{font-size:12px;color:var(--muted)}
+.statgrid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;font-size:13px;color:var(--muted)}
+.statgrid b{color:var(--text);font-family:var(--mono);font-weight:600;font-size:12.5px;text-align:right}
+.profedit{display:flex;gap:14px;align-items:center}
+#profNameIn{background:var(--ink);border:1px solid var(--line-hi);border-radius:4px;color:var(--text);padding:9px 10px;font:inherit;width:100%;box-sizing:border-box;margin-top:4px}
+.avgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}
+.avgrid button{background:none;border:2px solid transparent;border-radius:50%;padding:2px;aspect-ratio:1;max-width:100%}
+.avgrid button img{width:100%;height:100%;border-radius:50%;display:block;object-fit:cover}
+.avgrid button[aria-pressed="true"]{border-color:var(--amber)}
+.avgrid .up{border:1px dashed var(--line-hi);border-radius:50%;font-size:10.5px;color:var(--muted);line-height:1.1}
+#profOthers{display:flex;flex-wrap:wrap;gap:6px}
+#profOthers button{display:flex;align-items:center;gap:6px;background:var(--ink);border:1px solid var(--line-hi);border-radius:20px;padding:4px 10px 4px 4px;font-size:12.5px}
+#profMsg{min-height:1.1em;color:var(--amber);font-size:13px}
+#brand img{margin-right:2px}
+.overlay>.card.brief{width:min(780px,calc(100vw - 32px))}
+.bgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 22px}
+.bgrid section{display:flex;flex-direction:column;gap:4px}
+.bgrid h3{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.04em;margin:0;color:var(--amber);text-transform:uppercase}
+.bgrid p,.bgrid li{font-size:13px;line-height:1.5;color:#c9d4c7;margin:0}
+.bgrid ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+body.compact .bgrid{grid-template-columns:1fr}
 @media (prefers-reduced-motion:reduce){#banner div{animation:none}.msg{transition:none}}
 </style>
 
@@ -267,7 +294,7 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
 
 <div id="builderUI" hidden>
   <div id="top">
-    <div id="brand" class="panel"><i></i>PROJECT EDEN</div>
+    <div id="brand" class="panel"><img id="brandAv" class="av tiny" alt="" hidden><i></i>PROJECT EDEN</div>
     <div class="stat panel"><span class="label">Funds</span><span class="v" id="money">$0</span></div>
     <div class="stat panel"><span class="label">Visitors</span><span class="v" id="visitors">0</span></div>
     <div class="stat panel"><span class="label">Park rating</span><span class="v" id="rating">★☆☆☆☆</span></div>
@@ -356,6 +383,8 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
       <button class="primary" id="mResume">Resume</button>
       <button class="secondary" id="mSave">Save game</button>
       <button class="secondary" id="mLoad">Load last save</button>
+      <button class="secondary" id="mProf">Profile</button>
+      <button class="secondary sv" id="mBrief">Survival guide</button>
       <button class="secondary" id="mExit" style="grid-column:1 / -1">Exit to title</button>
     </div>
     <div id="menuMsg" role="status"></div>
@@ -380,6 +409,7 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
 
 <div class="overlay" id="intro">
   <div class="card">
+    <div class="profchip" id="profChip" hidden><img id="profImg" class="av" alt=""><div><b id="profName"></b><span id="profSub"></span></div><button class="secondary" id="profBtn">Profile</button></div>
     <span class="label">Isla Verde Biological Preserve · Director onboarding</span>
     <h1>PROJECT EDEN</h1>
     <p>You have an island, a budget and a genetics lab. Lay roads, fence paddocks, run power and raise your park rating to unlock bigger attractions, from aviaries to a Mosasaurus lagoon.</p>
@@ -388,7 +418,7 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
     <div class="keys deskHelp">
       <kbd>Left drag</kbd><span>Paddocks, fences and roads: drag, preview, release to build</span>
       <kbd>Left click</kbd><span>Place buildings and dinosaurs</span>
-      <kbd>W A S D</kbd><span>Move the camera, or your survivor later</span>
+      <kbd>W A S D</kbd><span>Move the camera</span>
       <kbd>Q / E · right drag</kbd><span>Rotate the view</span>
       <kbd>Wheel · pinch</kbd><span>Zoom</span>
       <kbd>Esc</kbd><span>Put the tool down (then left drag pans)</span>
@@ -443,6 +473,34 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
     <h2 id="perkH">Level 2</h2>
     <p>Pick one perk. The island keeps waiting while you choose.</p>
     <div class="traits" id="perkList"></div>
+  </div>
+</div>
+
+<div class="overlay" id="profO" hidden>
+  <div class="card" role="dialog" aria-labelledby="profH">
+    <span class="label" id="profK">Director profile</span>
+    <h2 id="profH">Your profile</h2>
+    <div class="profedit">
+      <img id="profBig" class="av big" alt="">
+      <div style="flex:1;min-width:0"><label class="label" for="profNameIn">Director name</label><input id="profNameIn" maxlength="20" placeholder="Your name" autocomplete="nickname"></div>
+    </div>
+    <div class="label">Profile picture</div>
+    <div class="avgrid" id="avGrid"></div>
+    <input type="file" id="avFile" accept="image/*" hidden>
+    <div id="profStatsWrap"><div class="label" style="margin-bottom:6px">Career record</div><div id="profStats" class="statgrid"></div></div>
+    <div id="profOthersWrap"><div class="label" style="margin-bottom:6px">Other directors on this device</div><div id="profOthers"></div></div>
+    <div id="profMsg" role="status"></div>
+    <div class="btnrow"><button class="primary" id="profDone">Save profile</button><button class="secondary" id="profNew">New profile</button><button class="secondary" id="profDel">Delete profile</button><button class="secondary" id="profCancel">Close</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="briefO" hidden>
+  <div class="card brief" role="dialog" aria-labelledby="briefH">
+    <span class="label" id="briefK">Emergency briefing</span>
+    <h2 id="briefH">The park has failed</h2>
+    <p id="briefCause"></p>
+    <div class="bgrid" id="briefBody"></div>
+    <div class="btnrow"><button class="primary" id="briefGo">I'm ready</button></div>
   </div>
 </div>
 
@@ -1200,7 +1258,7 @@ function act(t,x,z){
   if(t==='hybrid'&&S.pendingHybrid)addStrain(16+Object.keys(S.pendingHybrid.traits).length*4); else addStrain(STRAIN[t]||0);
   const c=inB(x,z)?cells[x][z]:null;
   if(B[t]&&B[t].b){
-    S.money-=r.cost; placeBuilding(t,x,z); S.dirty=true; tone('triangle',300,420,.08,.05);
+    S.money-=r.cost; placeBuilding(t,x,z); S.dirty=true; tone('triangle',300,420,.08,.05); stat('built',1);
     const msg={gen:'Generator online. The nearest fences are now live.',visitor:'Visitor Centre open. Run roads from it so guests can reach the paddocks.',lab:'Research Lab staffed. Hybrid splicing unlocked in the Dinosaurs tab.',harbor:'Harbor built. Connect it to your roads and the ferries will start running.',sec:'Security Office staffed. Escaped animals will be recaptured.',aviary:'Aviary complete. Release Pteranodons into it from the Dinosaurs tab.',lagoon:'Lagoon filled. Add a Mosasaurus from the Dinosaurs tab.',tower:'Observation Tower open. Nearby paddocks are more popular.'}[t];
     if(msg)log(msg,'good');
   }else if(t==='ptero'||t==='mosa'){
@@ -1212,6 +1270,7 @@ function act(t,x,z){
     if(t==='hybrid'){kind=S.pendingHybrid.base;tr=S.pendingHybrid.traits;name=S.pendingHybrid.name;S.pendingHybrid=null;}
     else S.money-=D[t].cost;
     spawnDino(kind,tr,t==='hybrid',name,x,z);
+    stat('hatched',1);
     log((t==='hybrid'?'Embryo hatched: ':'Hatched: ')+name+'.',t==='hybrid'||D[kind].carn?'warn':'good');
     if(!viewable.has(r.region))log('Visitors cannot see this paddock yet. Run a road beside its fence.','warn');
     if(t==='hybrid')selectTool(null);
@@ -1346,7 +1405,7 @@ const keys={};
 window.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return; const k=e.key.toLowerCase();
   if(e.repeat&&k.length===1&&'exfhgrtclvm123456'.includes(k))return; keys[k]=true;
-  if(k==='escape'){if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
+  if(k==='escape'){if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
   if(S.phase==='survival'&&!S.paused){
     if(k==='e')interact(); if(k==='x')toggleHide(); if(k==='f')eat(); if(k==='h')heal(); if(k==='g')throwFlare(); if(k==='r')reload(); if(k==='v')drink();
     if(k==='c')P.crouch=!P.crouch; if(k==='l')P.light=!P.light; if(k==='m')document.body.classList.toggle('bigmap');
@@ -1532,6 +1591,7 @@ function econTick(){
   let roads=0;for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(cells[x][z]&&cells[x][z].type==='road')roads++;
   const upkeep=gens*.6+fList.length*MAINT[S.maint].cost+dinos.length*.35+(countType('lab')?1.2:0)+countType('sec')*.8+countType('harbor')*.7+roads*.01
     +countType('hotel')*.8+countType('waterpark')*.6+countType('tower')*.2+listType('aviary').reduce((s,a)=>s+.9+a.pteros.length*.2,0)+countType('lagoon')*1.2;
+  stat('earned',Math.max(0,income));stat('playtime',1);stat('daysBest',S.day,'max');stat('peakBest',S.peak,'max');
   S.money+=income-upkeep; S.netRate=lerp(S.netRate||0,income-upkeep,.02);
   let changed=false;
   for(const f of fList){if(f.hp>0){f.hp-=MAINT[S.maint].decay*rand(0,2);if(f.hp<=0){f.hp=0;changed=true;log('Fence section failed from wear. Repair it before something notices.','warn');}}}
@@ -1593,6 +1653,7 @@ function pickCause(){
 let collapseT=0, breakQ=[], breakT=0;
 function triggerCollapse(){
   if(S.collapsed)return;
+  stat('collapses',1);
   S.causeKey=pickCause(); S.cause=CAUSE[S.causeKey];
   S.collapsed=true; S.phase='collapse'; collapseT=0; S.collapseDay=S.day; S.collapseL=Math.max(.3,lightOf(bTod())); S.collapseTod=bTod();
   selectTool(null); ghost.count=0; $('lab').hidden=true; $('hint').hidden=true;
@@ -1749,6 +1810,7 @@ function startSurvival(){
   log(document.body.classList.contains('touch')?'Left thumb moves, drag on the right to look, FIRE shoots. Tap USE next to buildings to search them.':'Click to aim. WASD to move, Shift to sprint, right mouse to aim down sights. Search buildings with E.');
   log('You are on your own. Scavenge, stay ahead of the ash, and find a way off the island.','alert');
   computePower(); rebuildBars(); mmDirty=true; renderWeapons(); renderIntel();
+  openBrief(true);
 }
 function zoneTarget(){
   const k=Z.k; const ratio=Z.ph[k][2];
@@ -2034,7 +2096,7 @@ document.addEventListener('pointerlockchange',()=>{const l=locked();$('lockHint'
 
 // ================= survival: update =================
 function survUpdate(dt){
-  P.survived+=dt; clock+=dt*2.4;
+  P.survived+=dt; clock+=dt*2.4; stat('playtime',dt);
   const L=dayLight();
   const out=outside(P.pos); const ashK=out?1:clamp(1-(Z.r-Math.hypot(P.pos.x-Z.c.x,P.pos.z-Z.c.z))/6,0,1)*.4;
   applyLight(L,'surv',ashK*.8+(erupting?.15:0));
@@ -2477,6 +2539,8 @@ function endGame(kind){
   const m=Math.floor(P.survived/60), s=Math.floor(P.survived%60);
   const saved=staff.filter(x=>!x.dead&&x.pos.distanceTo(P.pos)<16).length;
   if(kind!=='dead'&&saved)P.xp+=saved*150;
+  if(kind==='dead')stat('deaths',1);else{stat('escapes',1);stat(kind,1);stat('rescued',saved);}
+  stat('bestSurvive',P.survived,'max');stat('kills',P.kills);stat('kos',P.kos);stat('levelBest',P.level,'max');saveProfiles();
   $('endK').textContent=kind==='dead'?'Incident report':'Evacuation report';
   $('endH').textContent=kind==='heli'?'Airlifted off Isla Verde':kind==='boat'?'You sailed away':kind==='stolen'?'You stole their ride':'Killed on Isla Verde';
   const k=P.killer;
@@ -2488,6 +2552,7 @@ function endGame(kind){
   const rows=[['Park ran for',(S.collapseDay||S.day)+' days · rating '+'★'.repeat(S.level)],['Collapse cause',S.cause.toLowerCase()],['Peak visitors',S.peak.toLocaleString('en-US')],
     ['Survived',m+'m '+String(s).padStart(2,'0')+'s'],['Level reached',P.level+' · '+P.xp+' xp'],['Knockouts · kills',P.kos+' · '+P.kills],['Survivors rescued',kind==='dead'?'0':String(saved)],['Intel found',P.intel.length+' of 4']];
   for(const [a,v] of rows){const x=document.createElement('span');x.textContent=a;const b=document.createElement('kbd');b.textContent=v;$('endStats').append(b,x);}
+  const pr=curProf();if(pr){const a=document.createElement('span');a.textContent='Director';const b=document.createElement('kbd');b.textContent=pr.name+' · '+pr.stats.escapes+' escape'+(pr.stats.escapes===1?'':'s')+' · '+pr.stats.deaths+' death'+(pr.stats.deaths===1?'':'s');$('endStats').prepend(b,a);}
   $('end').hidden=false;
 }
 $('againBtn').onclick=()=>location.reload();
@@ -2660,13 +2725,134 @@ function enterBuild(){
   ac(); renderTools(); refreshWorld(); if(document.body.classList.contains('compact'))$('ops').open=false;
   canvas.focus();
 }
-$('startBtn').onclick=()=>{S.founded=Date.now();S.day=1;enterBuild();log('Welcome, Director. Start with a Visitor Centre, then drag roads out from it.','good');};
+$('startBtn').onclick=()=>{if(!curProf()){openProfile('create');return;}S.founded=Date.now();S.day=1;stat('parks',1);saveProfiles();enterBuild();log('Welcome, Director. Start with a Visitor Centre, then drag roads out from it.','good');};
 $('contBtn').onclick=()=>{if(!pendingSave)return;enterBuild();applySave(pendingSave);log('Welcome back, Director. Day '+S.day+'.','good');if(S.awayMsg){log(S.awayMsg,'good');S.awayMsg='';}};
+
+// ================= profiles =================
+const PROF={list:[],cur:null,updated:0};
+try{const j=localStorage.getItem('eden-profiles');if(j)Object.assign(PROF,JSON.parse(j));}catch(e){}
+const curProf=()=>PROF.list.find(p=>p.id===PROF.cur)||null;
+function newStats(){return{parks:0,daysBest:0,peakBest:0,earned:0,hatched:0,built:0,playtime:0,collapses:0,escapes:0,heli:0,boat:0,stolen:0,deaths:0,bestSurvive:0,kills:0,kos:0,rescued:0,levelBest:0};}
+function stat(k,v,mode){const p=curProf();if(!p)return;if(mode==='max')p.stats[k]=Math.max(p.stats[k]||0,v);else p.stats[k]=(p.stats[k]||0)+v;}
+const AV=[
+ ['#2e6a58','<path d="M12 41h40l-7-6H19z" fill="#d8c08a"/><path d="M21 35c0-9 5-15 11-15s11 6 11 15z" fill="#bfa676"/><rect x="21" y="31" width="22" height="3" fill="#6a5a3a"/>'],
+ ['#553621','<path d="M10 42l10-15 15-5 16 6-4 7-11-2-6 8z" fill="#c9a27a"/><path d="M33 37l14 0" stroke="#382e24" stroke-width="2"/><circle cx="41" cy="28" r="2.2" fill="#ffc95a"/>'],
+ ['#3a4a32','<g fill="#d9c891"><ellipse cx="32" cy="42" rx="8" ry="7"/><path d="M25 38l-8-15 4-2 9 13zM30 35v-18h4v18zM39 38l8-15 4 2-9 13z"/></g>'],
+ ['#7a4a10','<ellipse cx="32" cy="32" rx="15" ry="19" fill="#f0a030"/><ellipse cx="27" cy="25" rx="5" ry="8" fill="#ffd27a" opacity=".55"/><path d="M29 35l6-4M32 33l3 5M31 33l-4 3" stroke="#3a2008" stroke-width="1.8"/>'],
+ ['#2a1c16','<path d="M6 52l19-28h14l19 28z" fill="#6a5a50"/><path d="M25 24h14l-4 6h-6z" fill="#ff6a1f"/><circle cx="32" cy="14" r="6" fill="#a09890" opacity=".85"/><circle cx="40" cy="9" r="4" fill="#a09890" opacity=".6"/>'],
+ ['#264d2a','<path d="M32 54V12" stroke="#a6d88f" stroke-width="2.5"/><g fill="#86c86f"><ellipse cx="24" cy="20" rx="8" ry="3" transform="rotate(-30 24 20)"/><ellipse cx="40" cy="20" rx="8" ry="3" transform="rotate(30 40 20)"/><ellipse cx="23" cy="31" rx="9" ry="3.2" transform="rotate(-25 23 31)"/><ellipse cx="41" cy="31" rx="9" ry="3.2" transform="rotate(25 41 31)"/><ellipse cx="22" cy="42" rx="10" ry="3.4" transform="rotate(-20 22 42)"/><ellipse cx="42" cy="42" rx="10" ry="3.4" transform="rotate(20 42 42)"/></g>'],
+ ['#2f4f6a','<rect x="17" y="28" width="26" height="13" rx="6" fill="#d7d2c4"/><rect x="40" y="31" width="15" height="3.5" fill="#d7d2c4"/><rect x="10" y="22" width="42" height="2.5" fill="#1d1f22"/><rect x="29.5" y="22" width="2.5" height="7" fill="#1d1f22"/><rect x="18" y="44" width="22" height="2.5" fill="#1d1f22"/><rect x="34" y="31" width="7" height="5" rx="2" fill="#3a5866"/>'],
+ ['#5a3a20','<circle cx="32" cy="32" r="17" fill="none" stroke="#e8dcc0" stroke-width="3"/><path d="M32 16l5 16h-10z" fill="#e8553f"/><path d="M27 32h10l-5 16z" fill="#e8dcc0"/>'],
+];
+function avatarURL(av){if(av&&av.kind==='img'&&av.data)return av.data;const a=AV[(av&&av.i)||0];return 'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="'+a[0]+'"/>'+a[1]+'</svg>');}
+const lsKey=()=>{const p=curProf();return !p||p.legacy?'eden-save':'eden-save-'+p.id;};
+const docId=()=>{const p=curProf();return !p||p.legacy?'park1':'park-'+p.id;};
+function saveProfiles(){PROF.updated=Date.now();try{localStorage.setItem('eden-profiles',JSON.stringify(PROF));}catch(e){}
+  if(dbApi){dbApi.collection('data/users/'+uid).doc('profiles').set({blob:JSON.stringify(PROF),at:PROF.updated}).catch(()=>{});}}
+async function syncProfilesFromDb(){if(!dbApi)return;try{const sn=await dbApi.collection('data/users/'+uid).doc('profiles').get();if(sn.exists){const o=JSON.parse(sn.data().blob);if((o.updated||0)>(PROF.updated||0)){Object.assign(PROF,o);try{localStorage.setItem('eden-profiles',JSON.stringify(PROF));}catch(e){}}}}catch(e){}}
+function fmtTime(sec){sec=Math.round(sec);const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60);return h?h+'h '+m+'m':m+'m '+(sec%60)+'s';}
+function renderProfChip(){
+  const p=curProf(); $('profChip').hidden=!p; $('brandAv').hidden=!p; if(!p)return;
+  $('profImg').src=avatarURL(p.avatar); $('brandAv').src=avatarURL(p.avatar); $('profName').textContent=p.name;
+  $('profSub').textContent='Director since '+new Date(p.created).toLocaleDateString()+' · '+p.stats.parks+' park'+(p.stats.parks===1?'':'s');
+}
+let profDraft=null, profMode='edit', profDelConfirm=0;
+function openProfile(mode){
+  profMode=mode; profDelConfirm=0; $('profDel').textContent='Delete profile'; $('profMsg').textContent='';
+  const p=curProf();
+  profDraft=mode==='create'?{name:'',avatar:{kind:'preset',i:Math.floor(Math.random()*AV.length)}}:{name:p.name,avatar:Object.assign({},p.avatar)};
+  $('profK').textContent=mode==='create'?(PROF.list.length?'New director':'Welcome to Isla Verde'):'Director profile';
+  $('profH').textContent=mode==='create'?'Create your director profile':'Your profile';
+  $('profNameIn').value=profDraft.name;
+  $('profDone').textContent=mode==='create'?'Create profile':'Save profile';
+  $('profNew').hidden=mode==='create'||S.phase!=='intro'; $('profDel').hidden=mode==='create'; $('profCancel').hidden=mode==='create'&&!PROF.list.length;
+  $('profStatsWrap').hidden=mode==='create';
+  if(mode!=='create')renderStats(p);
+  const others=PROF.list.filter(o=>o.id!==PROF.cur);
+  $('profOthersWrap').hidden=!others.length||S.phase!=='intro';
+  const ow=$('profOthers'); ow.innerHTML='';
+  for(const o of others){const b=document.createElement('button');const im=document.createElement('img');im.className='av tiny';im.alt='';im.src=avatarURL(o.avatar);b.appendChild(im);b.appendChild(document.createTextNode('Switch to '+o.name));
+    b.onclick=()=>{PROF.cur=o.id;saveProfiles();$('profO').hidden=true;refreshTitle();};ow.appendChild(b);}
+  renderAvGrid(); $('profO').hidden=false; setTimeout(()=>$('profNameIn').focus(),50);
+}
+function renderAvGrid(){
+  $('profBig').src=avatarURL(profDraft.avatar);
+  const g=$('avGrid'); g.innerHTML='';
+  AV.forEach((a,i)=>{const b=document.createElement('button');b.setAttribute('aria-label','Picture '+(i+1));b.setAttribute('aria-pressed',profDraft.avatar.kind==='preset'&&profDraft.avatar.i===i?'true':'false');
+    const im=document.createElement('img');im.alt='';im.src=avatarURL({kind:'preset',i});b.appendChild(im);b.onclick=()=>{profDraft.avatar={kind:'preset',i};renderAvGrid();};g.appendChild(b);});
+  if(profDraft.avatar.kind==='img'){const b=document.createElement('button');b.setAttribute('aria-pressed','true');const im=document.createElement('img');im.alt='Your photo';im.src=profDraft.avatar.data;b.appendChild(im);g.appendChild(b);}
+  const up=document.createElement('button');up.className='up';up.textContent='Upload photo';up.onclick=()=>$('avFile').click();g.appendChild(up);
+}
+$('avFile').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const m=Math.min(img.width,img.height);
+    g.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,128,128);profDraft.avatar={kind:'img',data:c.toDataURL('image/jpeg',.82)};renderAvGrid();};
+    img.onerror=()=>{$('profMsg').textContent='That file could not be read as an image. Try a JPG or PNG.';};img.src=r.result;};
+  r.readAsDataURL(f); e.target.value='';};
+function renderStats(p){
+  const st=p.stats, rows=[['Parks founded',st.parks],['Longest-running park',st.daysBest+' day'+(st.daysBest===1?'':'s')],['Best peak visitors',st.peakBest.toLocaleString('en-US')],
+    ['Total earnings',fmt(st.earned)],['Dinosaurs hatched',st.hatched],['Things built',st.built],['Time played',fmtTime(st.playtime)]];
+  if(st.collapses>0)rows.push(['Park failures',st.collapses],['Escapes',st.escapes+' (helicopter '+st.heli+', boat '+st.boat+', stolen '+st.stolen+')'],['Deaths',st.deaths],
+    ['Longest survival',fmtTime(st.bestSurvive)],['Knockouts · kills',st.kos+' · '+st.kills],['Staff rescued',st.rescued],['Highest level',st.levelBest]);
+  const el=$('profStats'); el.innerHTML='';
+  for(const [k,v] of rows){const a=document.createElement('span');a.textContent=k;const b=document.createElement('b');b.textContent=String(v);el.append(a,b);}
+}
+$('profDone').onclick=()=>{
+  const name=$('profNameIn').value.trim(); if(!name){$('profMsg').textContent='Give your director a name.';$('profNameIn').focus();return;}
+  if(profMode==='create'){if(PROF.list.length>=8){$('profMsg').textContent='This device already has 8 directors. Delete one first.';return;}
+    const p={id:'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name,avatar:profDraft.avatar,created:Date.now(),stats:newStats(),legacy:!PROF.list.length};
+    PROF.list.push(p);PROF.cur=p.id;}
+  else{const p=curProf();p.name=name;p.avatar=profDraft.avatar;}
+  saveProfiles(); $('profO').hidden=true; renderProfChip(); if(S.phase==='intro')refreshTitle(); else if(!$('menuO').hidden)menuMsg('Profile saved.');
+};
+$('profNameIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('profDone').click();e.stopPropagation();});
+$('profNew').onclick=()=>openProfile('create');
+$('profCancel').onclick=()=>{$('profO').hidden=true;if(!curProf()&&PROF.list.length){PROF.cur=PROF.list[0].id;refreshTitle();}};
+$('profDel').onclick=()=>{
+  if(!profDelConfirm){profDelConfirm=1;$('profDel').textContent='Click again to delete';$('profMsg').textContent='This removes the profile, its stats and its saved park from this device.';return;}
+  const p=curProf(); if(!p)return;
+  try{localStorage.removeItem(lsKey());}catch(e){}
+  if(dbApi){dbApi.collection('data/users/'+uid).doc(docId()).delete().catch(()=>{});}
+  PROF.list=PROF.list.filter(o=>o.id!==p.id); PROF.cur=PROF.list[0]?PROF.list[0].id:null; saveProfiles();
+  $('profO').hidden=true; if(S.phase!=='intro'){location.reload();return;} if(!PROF.cur)openProfile('create'); else refreshTitle();
+};
+$('profBtn').onclick=()=>openProfile('edit');
+$('mProf').onclick=()=>{if(curProf())openProfile('edit');};
+async function refreshTitle(){
+  renderProfChip(); $('contBtn').hidden=true; $('saveInfo').textContent='Checking for a saved park…';
+  pendingSave=await readSave();
+  if(pendingSave&&S.phase==='intro'){$('contBtn').hidden=false;$('contBtn').textContent='Continue · Day '+pendingSave.s.day+' · '+'★'.repeat(pendingSave.s.level||1);
+    $('saveInfo').textContent='Saved park found ('+ago(pendingSave.at)+'). New park starts fresh and replaces it at the next save.';}
+  else $('saveInfo').textContent=dbApi?'Your park saves to your Claude account automatically.':'Your park saves in this browser automatically.';
+}
+
+// ================= survival briefing =================
+function openBrief(first){
+  S.paused=true; if(locked())document.exitPointerLock();
+  const touch=document.body.classList.contains('touch');
+  $('briefK').textContent=first?'Emergency briefing':'Survival guide';
+  $('briefH').textContent=first?'The park has failed':'How to survive';
+  $('briefCause').textContent=first?(S.cause.charAt(0)+S.cause.slice(1).toLowerCase()+'. '+CAUSETXT[S.causeKey]+' Everything you built is now loose, and you are on foot.'):'';
+  const ways=['<li><b>Radio:</b> repair the radio at the '+(radio?bName(radio).toLowerCase():'Visitor Centre')+' (6 scrap, 2 fuel). A helicopter lands in the final safe circle.</li>'];
+  if(harborB)ways.push('<li><b>Boat:</b> repair it at your harbor (8 scrap, 3 fuel) and leave whenever you like.</li>');
+  ways.push('<li><b>Their helicopter:</b> an armed recovery team will land. Take the keycard from their commander and fly out before they leave.</li>');
+  const ctl=touch?['Left thumb: move','Drag on the right: look','FIRE / AIM buttons: shoot and aim down sights','USE: search, repair, open crates','HIDE: go inside a building','GUN: switch weapon · RELOAD · HEAL','CROUCH and SPRINT toggle · MORE: eat, drink, flare, light, map']
+    :['Click the game to take the mouse · Esc frees it','Mouse: look · left click: fire · right mouse: aim','WASD: move · Shift: sprint · C: crouch','E: search, repair, open · X: hide inside','R: reload · 1–6: weapons','H: heal · F: eat · V: energy drink · G: hand flare','L: flashlight · M: big map'];
+  $('briefBody').innerHTML='<section><h3>Get off the island</h3><ul>'+ways.join('')+'</ul></section>'
+   +'<section><h3>The ash cloud</h3><p>Monte Ceniza is erupting. The safe zone is the white circle on your map and it shrinks in stages. Outside it you take damage that grows every stage. Supply drops with the best gear fall inside the next circle.</p></section>'
+   +'<section><h3>Stay alive</h3><ul><li>Search buildings and crates for food, medicine, ammo, armor and backpacks.</li><li>Hide inside a building to rest, heal and drop out of sight.</li><li>Crouch in jungle to be hard to spot. Turn your light off at night.</li><li>Sprinting and gunshots draw attention. Watch hunger and stamina.</li></ul></section>'
+   +'<section><h3>Fight or sneak</h3><ul><li>Tranquilizer weapons knock animals and people out for a while.</li><li>Shotguns and rifles are rare and lethal, but very loud.</li><li>Gear comes in Common, Uncommon, Rare and Epic. Armor soaks damage, backpacks carry more.</li><li>Live fences still shock predators. Restart a generator with fuel to power them.</li></ul></section>'
+   +'<section><h3>Grow stronger</h3><p>Earn XP for searching, rescuing stranded staff, finding intel and taking down threats. Every level lets you pick a perk. Staff who escape with you earn a big bonus.</p></section>'
+   +'<section><h3>Controls</h3><ul>'+ctl.map(c=>'<li>'+c+'</li>').join('')+'</ul></section>';
+  $('briefGo').textContent=first?'I\'m ready':'Back to it';
+  $('briefO').hidden=false; $('briefO').firstElementChild.scrollTop=0; $('briefGo').focus({preventScroll:true});
+}
+$('briefGo').onclick=()=>{$('briefO').hidden=true;S.paused=!$('perkO').hidden||!$('menuO').hidden;if(!document.body.classList.contains('touch')&&S.phase==='survival')requestLock();};
+$('mBrief').onclick=()=>{closeMenu();openBrief(false);};
 
 // ================= save / load / menu =================
 let dbApi=null, uid=null, saving=false, lastSave=null, pendingSave=null;
 const storeReady=(async()=>{try{const c=window.claude;if(!c||!c.use)return;const [db,user]=await Promise.all([c.use('db'),c.use('user')]);if(!db||!user)return;const id=await user.id();if(!id)return;dbApi=db;uid=id;}catch(e){}})();
-const saveRef=()=>dbApi.collection('data/users/'+uid).doc('park1');
+const saveRef=()=>dbApi.collection('data/users/'+uid).doc(docId());
 function serialize(){
   const roads=[],F=[];for(let x=0;x<N;x++)for(let z=0;z<N;z++){const c=cells[x][z];if(c&&c.type==='road')roads.push(key(x,z));}
   for(const f of fList)F.push([f.x,f.z,Math.round(f.hp)]);
@@ -2702,7 +2888,8 @@ async function saveGame(auto){
   if(S.phase!=='build'){if(!auto)menuMsg('Saving is switched off once the park has failed. Survive!');return false;}
   if(saving)return false; saving=true;
   const data=serialize(), json=JSON.stringify(data); let where='';
-  try{localStorage.setItem('eden-save',json);where='this browser';}catch(e){}
+  try{localStorage.setItem(lsKey(),json);where='this browser';}catch(e){}
+  saveProfiles();
   if(dbApi){try{await saveRef().set({blob:json,at:data.at,day:S.day,level:S.level});where='your Claude account';}
     catch(e){if(!auto)menuMsg(e&&e.code==='quota_exceeded'?'Your park is too large to save online.':'The online save could not be reached.');}}
   saving=false;
@@ -2712,7 +2899,7 @@ async function saveGame(auto){
 }
 async function readSave(){
   let best=null;
-  try{const j=localStorage.getItem('eden-save');if(j)best=JSON.parse(j);}catch(e){}
+  try{const j=localStorage.getItem(lsKey());if(j)best=JSON.parse(j);}catch(e){}
   if(dbApi){try{const sn=await saveRef().get();if(sn.exists){const o=JSON.parse(sn.data().blob);if(!best||o.at>best.at)best=o;}}catch(e){}}
   return best;
 }
@@ -2720,10 +2907,10 @@ function fmtAway(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?
 function ago(t){const m=Math.round((Date.now()-t)/60000);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' days ago';}
 (async()=>{
   await Promise.race([storeReady,new Promise(r=>setTimeout(r,11000))]);
-  pendingSave=await readSave();
-  if(pendingSave&&S.phase==='intro'){$('contBtn').hidden=false;$('contBtn').textContent='Continue · Day '+pendingSave.s.day+' · '+'★'.repeat(pendingSave.s.level||1);
-    $('saveInfo').textContent='Saved park found ('+ago(pendingSave.at)+'). New park starts fresh and replaces it at the next save.';}
-  else $('saveInfo').textContent=dbApi?'Your park saves to your Claude account automatically.':'Your park saves in this browser automatically.';
+  await syncProfilesFromDb();
+  if(!curProf()&&PROF.list.length)PROF.cur=PROF.list[0].id;
+  if(!curProf()){$('saveInfo').textContent='';openProfile('create');}
+  else refreshTitle();
 })();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.phase==='build')saveGame(true);});
 window.addEventListener('pagehide',()=>{if(S.phase==='build')saveGame(true);});
@@ -2754,7 +2941,8 @@ $('mExit').onclick=()=>{if(!confirmExit){confirmExit=1;$('mExit').textContent='C
 $('sSound').onclick=()=>{SET.sound=!SET.sound;saveSettings();syncSettings();if(SET.sound)tone('triangle',660,990,.12,.08);};
 $('sVol').oninput=e=>{SET.vol=+e.target.value;saveSettings();};
 $('sSens').oninput=e=>{SET.sens=+e.target.value;saveSettings();};
-window.__eden={warp:h=>{S.warp=(S.warp||0)+h*3600000;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
+renderProfChip();
+window.__eden={PROF,openBrief,warp:h=>{S.warp=(S.warp||0)+h*3600000;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
 refreshWorld();

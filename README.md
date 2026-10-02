@@ -10,7 +10,7 @@ A browser park-builder: run a dinosaur park on a volcanic island.
 - Raise your park rating with visitors to unlock new buildings, attractions and species. Keep an eye on system strain in the control room.
 - **Phones:** drag to pan or build, pinch to zoom, twist two fingers to rotate. Landscape works best.
 
-Saves are stored in your browser on this site.
+Each player creates a director profile (name and picture) with their own saved park and career stats. Profiles and saves are stored in your browser on this site.
 
 ## Feedback for testers
 Please note what you were doing when something felt wrong or broke, your device and browser, and how many days you'd played.
