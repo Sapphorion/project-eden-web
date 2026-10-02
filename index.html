@@ -21,6 +21,7 @@
   color-scheme:dark;
 }
 [hidden]{display:none!important}
+body:not(.survival) .sv{display:none}
 html,body{height:100%}
 body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:14px;overflow:hidden;-webkit-user-select:none;user-select:none}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none}
@@ -365,11 +366,11 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
       <div class="keys" style="margin-top:8px">
         <kbd>Esc</kbd><span>Open or close this menu</span>
         <kbd>Builder</kbd><span>Drag to build paddocks, fences and roads · WASD move · Q/E rotate · wheel zoom</span>
-        <kbd>Survival</kbd><span>Click to aim · left click fire · right mouse aim · WASD move · Shift sprint</span>
-        <kbd>E · X · R</kbd><span>Use · hide · reload</span>
-        <kbd>1–6</kbd><span>Weapons</span>
-        <kbd>H · F · V · G</kbd><span>Heal · eat · energy drink · hand flare</span>
-        <kbd>C · L · M</kbd><span>Crouch · flashlight · big map</span>
+        <kbd class="sv">On foot</kbd><span class="sv">Click to aim · left click fire · right mouse aim · WASD move · Shift sprint</span>
+        <kbd class="sv">E · X · R</kbd><span class="sv">Use · hide · reload</span>
+        <kbd class="sv">1–6</kbd><span class="sv">Weapons</span>
+        <kbd class="sv">H · F · V · G</kbd><span class="sv">Heal · eat · energy drink · hand flare</span>
+        <kbd class="sv">C · L · M</kbd><span class="sv">Crouch · flashlight · big map</span>
       </div>
     </details>
   </div>
@@ -382,7 +383,7 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
     <span class="label">Isla Verde Biological Preserve · Director onboarding</span>
     <h1>PROJECT EDEN</h1>
     <p>You have an island, a budget and a genetics lab. Lay roads, fence paddocks, run power and raise your park rating to unlock bigger attractions, from aviaries to a Mosasaurus lagoon.</p>
-    <p>The park runs in real time: one park day is one real day, with real day and night, and it keeps earning while you are away. Every build adds strain. From day 15, a strained park can fail at any moment. When it does, you are on the ground with whatever you can find, and the volcano is waking up.</p>
+    <p>The park runs in real time: one park day is one real day, with real day and night, and it keeps earning while you are away. Keep an eye on system strain in the control room as you grow. Monte Ceniza smokes quietly in the background.</p>
     <p class="touchHelp">On a phone: drag with one finger to pan or build, pinch to zoom, twist two fingers to rotate. Turn your phone sideways for the best view.</p>
     <div class="keys deskHelp">
       <kbd>Left drag</kbd><span>Paddocks, fences and roads: drag, preview, release to build</span>
@@ -398,7 +399,7 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
       <button class="secondary" id="newIsland">Generate another island</button>
     </div>
     <span id="saveInfo">Checking for a saved park…</span>
-    <span style="font-size:12px;color:var(--muted)">Keyboard and mouse recommended. Sound plays during emergencies.</span>
+    <span style="font-size:12px;color:var(--muted)">Keyboard and mouse recommended. Sound on.</span>
   </div>
 </div>
 
