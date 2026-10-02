@@ -292,7 +292,6 @@ body.touch:not(.portrait) #prompt{bottom:calc(env(safe-area-inset-bottom,0px) + 
       <div class="row"><span>Park hype</span><span class="num" id="hypeInfo">0</span></div>
       <div class="label" style="margin-top:2px">Director's checklist</div>
       <div class="check" id="checklist"></div>
-      <button class="ghostbtn" id="forceCollapse">Simulate total system failure</button>
     </div>
   </details>
 
@@ -1306,7 +1305,6 @@ function flashHint(why){hoverWhy=why;hintFlashT=2.2;updateHint();tone('square',1
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{S.maint=b.dataset.m;syncMaint();log('Maintenance budget set to '+b.textContent.toLowerCase()+'.');});
 function syncMaint(){document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===S.maint?'true':'false'));}
 syncMaint();
-$('forceCollapse').onclick=()=>{if(S.phase==='build'){S.causeKey='manual';log('Override accepted. Shutting down park systems...','alert');triggerCollapse();}};
 
 // ---------- lab ----------
 function openLab(){
