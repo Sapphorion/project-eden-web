@@ -307,6 +307,26 @@ body.compact .bgrid{grid-template-columns:1fr}
 #happy[data-h="low"]{color:var(--alert)} #happy[data-h="mid"]{color:var(--amber)} #happy[data-h="hi"]{color:var(--leaf)}
 body.compact .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 body.compact .overlay.soft{padding:8px}
+/* ---------- legal ---------- */
+#legalO{z-index:30}
+.overlay>.card.legal{width:min(720px,calc(100vw - 32px))}
+.legalbody{display:flex;flex-direction:column;gap:10px;-webkit-user-select:text;user-select:text}
+.legalbody h3{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.04em;margin:6px 0 0;color:var(--amber);text-transform:uppercase}
+.legalbody p{max-width:none}
+.legalbody p,.legalbody li,.legalbody td,.legalbody th{font-size:13px;line-height:1.55;color:#c9d4c7;margin:0}
+.legalbody ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+.legalbody table{border-collapse:collapse;width:100%}
+.legalbody th{text-align:left;color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em}
+.legalbody td,.legalbody th{border-bottom:1px solid var(--line);padding:6px 8px 6px 0;vertical-align:top}
+.legalbody a,.legallinks a,#profConsent a{color:var(--volt)}
+.legalbody pre{white-space:pre-wrap;font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--ink);border:1px solid var(--line);border-radius:5px;padding:10px;margin:0}
+.legallinks{font-size:12px;color:var(--muted)}
+.danger{background:none;border:1px solid var(--alert);color:var(--alert);border-radius:5px;padding:9px 14px}
+.danger:hover{background:#3a1c16}
+body.compact .legalbody table,body.compact .legalbody thead,body.compact .legalbody tbody,body.compact .legalbody tr,body.compact .legalbody td{display:block;width:auto}
+body.compact .legalbody thead{display:none}
+body.compact .legalbody td{border:0;padding:2px 0}
+body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
 @media (prefers-reduced-motion:reduce){#banner div{animation:none}.msg{transition:none}}
 </style>
 
@@ -416,6 +436,7 @@ body.compact .overlay.soft{padding:8px}
       <button class="secondary" id="mLoad">Load last save</button>
       <button class="secondary" id="mProf">Profile</button>
       <button class="secondary sv" id="mBrief">Survival guide</button>
+      <button class="secondary" id="mLegal">Privacy &amp; license</button>
       <button class="secondary" id="mExit" style="grid-column:1 / -1">Exit to title</button>
     </div>
     <div id="menuMsg" role="status"></div>
@@ -434,6 +455,70 @@ body.compact .overlay.soft{padding:8px}
         <kbd class="sv">C · L · M</kbd><span class="sv">Crouch · flashlight · big map</span>
       </div>
     </details>
+  </div>
+</div>
+<div class="overlay" id="legalO" hidden>
+  <div class="card legal" role="dialog" aria-labelledby="legalH">
+    <span class="label">Project Eden · © 2026 Sapphorion</span>
+    <h2 id="legalH">Privacy &amp; license</h2>
+    <div class="itabs" role="tablist"><button role="tab" data-ltab="privacy" aria-selected="true">Privacy notice</button><button role="tab" data-ltab="license" aria-selected="false">License &amp; credits</button></div>
+    <div class="legalbody" id="legalPrivacy">
+      <p><b>Effective date:</b> 3 October 2026. This notice explains what personal information Project Eden processes, why, and your rights under South Africa's Protection of Personal Information Act 4 of 2013 (POPIA).</p>
+      <h3>Who is responsible</h3>
+      <p>The responsible party and Information Officer is <b>Sapphorion</b>, Gqeberha, South Africa. Contact: <a href="mailto:sapphorion@gmail.com">sapphorion@gmail.com</a></p>
+      <h3>What the game collects</h3>
+      <table><thead><tr><th>Information</th><th>Required?</th><th>Why</th></tr></thead><tbody>
+        <tr><td>Director name (any name or nickname you choose)</td><td>Yes, to create a profile</td><td>Shows on your profile and end-of-run report</td></tr>
+        <tr><td>Profile picture: a built-in icon, or a photo you choose to upload (shrunk to 128 × 128 px)</td><td>Optional. Icons are the default</td><td>Shows on your profile</td></tr>
+        <tr><td>Game progress, saved parks, career statistics and settings</td><td>Needed to save and continue</td><td>Lets you continue where you left off</td></tr>
+      </tbody></table>
+      <p>The game does not ask for your email, phone number, location, age, contacts or payment details. It has no adverts, no analytics and no tracking, and nothing is sold or shared for marketing.</p>
+      <h3>Where it is kept</h3>
+      <ul><li><b>GitHub Pages site:</b> everything stays in your browser's storage on your device. It is not sent to Sapphorion or anyone else.</li>
+        <li><b>Claude link (claude.ai):</b> your profile and saves are also kept in a private area of the game's storage on claude.ai, linked to your Claude account so you can continue on another device. That area is private to you: even Sapphorion, as the publisher, cannot read it. Anthropic provides that storage under its own privacy policy.</li></ul>
+      <p id="legalWhere" style="color:var(--leaf)"></p>
+      <h3>Other services</h3>
+      <p>Loading the game connects your browser to GitHub (hosting), Anthropic / claude.ai (the Claude link and its storage), Google Fonts (fonts) and cdnjs / Cloudflare (the three.js library). They receive technical information such as your IP address and browser type under their own privacy policies. Their servers are outside South Africa. This transfer is necessary to deliver the game, and these providers apply their own data-protection safeguards.</p>
+      <h3>Why and on what basis</h3>
+      <p>Your information is used only to run the features you ask for: your profile, saving and continuing your park, and your career record. The basis is your consent, given when you create a profile, and the need to provide the service you asked for (POPIA section 11(1)(a) and (b)). You can withdraw consent at any time by deleting your data below.</p>
+      <h3>How long it is kept</h3>
+      <p>Until you delete it. Edit your name or picture in Profile, delete one director with Profile → Delete profile, or delete everything with the button below. Clearing your browser's site data also removes the copies on your device.</p>
+      <h3>Children</h3>
+      <p>If you are under 18, ask a parent or guardian to read this notice and agree before you create a profile. Use a built-in icon instead of a photo. Never upload a photo of a child without a parent's or guardian's permission.</p>
+      <h3>Security</h3>
+      <p>Saves on claude.ai are private to your account. Anyone using the same browser on the same device can see the profiles stored there, so delete your profile if you share a device.</p>
+      <h3>Your rights</h3>
+      <p>Under POPIA you may ask what information is held about you, ask for it to be corrected or deleted, and object to its processing. You can do most of this yourself in the game. For anything else, email <a href="mailto:sapphorion@gmail.com">sapphorion@gmail.com</a>. If you are not satisfied, you may complain to the Information Regulator (South Africa) at <a href="https://inforegulator.org.za" target="_blank" rel="noopener">inforegulator.org.za</a> through its <a href="https://eservices.inforegulator.org.za/" target="_blank" rel="noopener">eServices portal</a>.</p>
+      <h3>Changes</h3>
+      <p>If this notice changes, the effective date above will change and the game will show the new version.</p>
+      <h3>Delete all my game data</h3>
+      <p>Removes every director profile, saved park and setting on this device, and the copies on your Claude account if you are playing on Claude. This cannot be undone.</p>
+      <div class="btnrow"><button class="danger" id="legalWipe">Delete all my game data</button><span id="legalMsg" style="font-size:13px;color:var(--amber)" role="status"></span></div>
+    </div>
+    <div class="legalbody" id="legalLicense" hidden>
+      <p><b>Project Eden. Copyright © 2026 Sapphorion. All rights reserved.</b></p>
+      <p>Project Eden, including its source code, game design, text, artwork, models, sounds and the "Project Eden" and "Isla Verde" names as used in the game, is owned by Sapphorion and protected by the Copyright Act 98 of 1978 (South Africa) and international copyright law.</p>
+      <h3>What you may do</h3>
+      <p>Play the game free of charge through the official links published by Sapphorion, for your own personal, non-commercial entertainment, and share those official links with others.</p>
+      <h3>What you may not do without written permission</h3>
+      <ul><li>Copy, mirror or re-host the game or any part of it.</li><li>Modify it, adapt it or make derivative works from it.</li><li>Sell, rent, license or otherwise commercialise it.</li><li>Remove or change any copyright, licence or attribution notice.</li><li>Use its code, artwork or design in another product.</li></ul>
+      <p>Being able to view the source code in your browser does not give you any right to reuse it. Nothing here limits rights you have under law that cannot be excluded.</p>
+      <h3>No warranty</h3>
+      <p>The game is a test release provided "as is", without warranty of any kind. Saved games may be lost, and features may change or be removed. To the extent permitted by law, Sapphorion is not liable for any loss or damage arising from use of the game. Permission to play ends automatically if you breach this licence. Permission requests: <a href="mailto:sapphorion@gmail.com">sapphorion@gmail.com</a>.</p>
+      <h3>Third-party components</h3>
+      <p>These keep their own licences, which govern them instead of the licence above.</p>
+      <ul><li><b>three.js r128</b> (3D rendering). Copyright © 2010–2021 three.js authors. MIT License, reproduced below.</li>
+        <li><b>Profile picture icons</b> from <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> by Lorc, Delapouite and contributors, licensed under <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>. Colours and circular framing were added for the game.</li>
+        <li><b>Fonts:</b> Saira Condensed, Atkinson Hyperlegible and JetBrains Mono, served by Google Fonts under the <a href="https://openfontlicense.org" target="_blank" rel="noopener">SIL Open Font License 1.1</a>.</li></ul>
+      <pre>three.js MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</pre>
+    </div>
+    <div class="btnrow"><button class="primary" id="legalClose">Close</button></div>
   </div>
 </div>
 <div class="overlay soft" id="infoO" hidden>
@@ -473,6 +558,7 @@ body.compact .overlay.soft{padding:8px}
     </div>
     <span id="saveInfo">Checking for a saved park…</span>
     <span style="font-size:12px;color:var(--muted)">Keyboard and mouse recommended. Sound on.</span>
+    <span class="legallinks"><a href="#" data-legal="privacy">Privacy notice</a> · <a href="#" data-legal="license">License</a> · © 2026 Sapphorion. All rights reserved.</span>
   </div>
 </div>
 
@@ -530,8 +616,10 @@ body.compact .overlay.soft{padding:8px}
     <div class="label">Profile picture</div>
     <div class="avgrid" id="avGrid"></div>
     <input type="file" id="avFile" accept="image/*" hidden>
+    <span style="font-size:11.5px;color:var(--muted)">A photo is optional. Only upload a photo of yourself. It is shrunk to 128 px and kept on this device (and your Claude account when you play on Claude). Under 18? Please use an icon.</span>
     <div id="profStatsWrap"><div class="label" style="margin-bottom:6px">Career record</div><div id="profStats" class="statgrid"></div></div>
     <div id="profOthersWrap"><div class="label" style="margin-bottom:6px">Other directors on this device</div><div id="profOthers"></div></div>
+    <label class="trait" id="profConsent"><input type="checkbox" id="profAgree"><span>I have read the <a href="#" data-legal="privacy">privacy notice</a> and agree to my profile and saves being stored as it describes. If I am under 18, a parent or guardian has agreed.</span></label>
     <div id="profMsg" role="status"></div>
     <span style="font-size:11px;color:var(--muted)">Pictures from <a href="https://game-icons.net" target="_blank" rel="noopener" style="color:inherit">game-icons.net</a> by Lorc, Delapouite and contributors, CC BY 3.0.</span>
     <div class="btnrow"><button class="primary" id="profDone">Save profile</button><button class="secondary" id="profNew">New profile</button><button class="secondary" id="profDel">Delete profile</button><button class="secondary" id="profCancel">Close</button></div>
@@ -1803,7 +1891,7 @@ const keys={};
 window.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return; const k=e.key.toLowerCase();
   if(e.repeat&&k.length===1&&'exfhgrtclvm123456'.includes(k))return; keys[k]=true;
-  if(k==='escape'){if(!$('infoO').hidden){closeInfo();return;}if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
+  if(k==='escape'){if(!$('legalO').hidden){$('legalClose').click();return;}if(!$('infoO').hidden){closeInfo();return;}if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
   if(S.phase==='survival'&&!S.paused){
     if(k==='e')interact(); if(k==='x')toggleHide(); if(k==='f')eat(); if(k==='h')heal(); if(k==='g')throwFlare(); if(k==='r')reload(); if(k==='v')drink();
     if(k==='c')P.crouch=!P.crouch; if(k==='l')P.light=!P.light; if(k==='m')document.body.classList.toggle('bigmap');
@@ -3464,7 +3552,7 @@ function openProfile(mode){
   $('profNameIn').value=profDraft.name;
   $('profDone').textContent=mode==='create'?'Create profile':'Save profile';
   $('profNew').hidden=mode==='create'||S.phase!=='intro'; $('profDel').hidden=mode==='create'; $('profCancel').hidden=mode==='create'&&!PROF.list.length;
-  $('profStatsWrap').hidden=mode==='create';
+  $('profStatsWrap').hidden=mode==='create'; $('profConsent').hidden=mode!=='create'; $('profAgree').checked=false;
   if(mode!=='create')renderStats(p);
   const others=PROF.list.filter(o=>o.id!==PROF.cur);
   $('profOthersWrap').hidden=!others.length||S.phase!=='intro';
@@ -3496,8 +3584,9 @@ function renderStats(p){
 }
 $('profDone').onclick=()=>{
   const name=$('profNameIn').value.trim(); if(!name){$('profMsg').textContent='Give your director a name.';$('profNameIn').focus();return;}
+  if(profMode==='create'&&!$('profAgree').checked){$('profMsg').textContent='Please read the privacy notice and tick the box to continue.';return;}
   if(profMode==='create'){if(PROF.list.length>=8){$('profMsg').textContent='This device already has 8 directors. Delete one first.';return;}
-    const p={id:'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name,avatar:profDraft.avatar,created:Date.now(),stats:newStats(),legacy:!PROF.list.length};
+    const p={id:'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name,avatar:profDraft.avatar,created:Date.now(),consent:{privacy:'2026-10-03',at:Date.now()},stats:newStats(),legacy:!PROF.list.length};
     PROF.list.push(p);PROF.cur=p.id;}
   else{const p=curProf();p.name=name;p.avatar=profDraft.avatar;}
   saveProfiles(); $('profO').hidden=true; renderProfChip(); if(S.phase==='intro')refreshTitle(); else if(!$('menuO').hidden)menuMsg('Profile saved.');
@@ -3645,6 +3734,27 @@ $('mExit').onclick=()=>{if(!confirmExit){confirmExit=1;$('mExit').textContent='C
 $('sSound').onclick=()=>{SET.sound=!SET.sound;saveSettings();syncSettings();if(SET.sound)tone('triangle',660,990,.12,.08);};
 $('sVol').oninput=e=>{SET.vol=+e.target.value;saveSettings();};
 $('sSens').oninput=e=>{SET.sens=+e.target.value;saveSettings();};
+// ================= privacy & license =================
+let wipeConfirm=0;
+function openLegal(tab){
+  setLegalTab(tab||'privacy'); wipeConfirm=0; $('legalWipe').textContent='Delete all my game data'; $('legalMsg').textContent='';
+  $('legalWhere').textContent=dbApi?'You are playing on Claude, so your data is kept on this device and in your private Claude storage.':'Right now your data is kept on this device only.';
+  $('legalO').hidden=false; $('legalO').firstElementChild.scrollTop=0;
+}
+function setLegalTab(t){document.querySelectorAll('#legalO [data-ltab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.ltab===t?'true':'false'));$('legalPrivacy').hidden=t!=='privacy';$('legalLicense').hidden=t!=='license';$('legalO').firstElementChild.scrollTop=0;}
+document.querySelectorAll('#legalO [data-ltab]').forEach(b=>b.onclick=()=>setLegalTab(b.dataset.ltab));
+document.addEventListener('click',e=>{const a=e.target.closest('[data-legal]');if(!a)return;e.preventDefault();openLegal(a.dataset.legal);});
+$('legalClose').onclick=()=>{$('legalO').hidden=true;};
+$('legalO').addEventListener('pointerdown',e=>{if(e.target===$('legalO'))$('legalO').hidden=true;});
+$('mLegal').onclick=()=>openLegal('privacy');
+$('legalWipe').onclick=async()=>{
+  if(!wipeConfirm){wipeConfirm=1;$('legalWipe').textContent='Click again to delete everything';$('legalMsg').textContent='Every profile and saved park will be removed.';return;}
+  $('legalWipe').disabled=true; $('legalMsg').textContent='Deleting…'; S.phase='wiped';
+  const ids=PROF.list.map(p=>p.id);
+  try{Object.keys(localStorage).filter(k=>k.startsWith('eden-')).forEach(k=>localStorage.removeItem(k));}catch(e){}
+  if(dbApi){const col=dbApi.collection('data/users/'+uid);await Promise.all(['profiles','park1',...ids.map(i=>'park-'+i)].map(d=>col.doc(d).delete().catch(()=>{})));}
+  $('legalMsg').textContent='All game data deleted.'; setTimeout(()=>location.reload(),900);
+};
 renderProfChip();
 window.__eden={PROF,openBrief,warp:h=>{S.warp=(S.warp||0)+h*3600000;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},

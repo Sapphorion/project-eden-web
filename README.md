@@ -21,3 +21,8 @@ Please note what you were doing when something felt wrong or broke, your device 
 
 ## Credits
 Profile pictures are icons from [game-icons.net](https://game-icons.net) by Lorc, Delapouite and contributors, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 3D rendering by [three.js](https://threejs.org) (MIT).
+
+## Privacy and license
+Project Eden is © 2026 Sapphorion. All rights reserved. See [LICENSE](LICENSE). You may play it through the official links, but not copy, modify, re-host or sell it without permission.
+
+The game keeps your profile and saves on your device (and in your private Claude storage when played on Claude). It has no analytics or adverts. See the [privacy notice](PRIVACY.md), written for South Africa's POPIA. Both are also available inside the game.
