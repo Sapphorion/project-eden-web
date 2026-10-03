@@ -17,7 +17,8 @@ The Game only collects what it needs to give you a profile and keep your park:
 | --- | --- | --- |
 | Director name (any name or nickname you choose) | Yes, to create a profile | Shows on your profile and end-of-run report |
 | Profile picture: one of the built-in icons, **or** a photo you choose to upload (shrunk to 128 × 128 pixels) | Optional. Icons are the default | Shows on your profile |
-| Game progress, saved parks, career statistics and settings (sound, volume, mouse sensitivity) | Needed to save and continue | Lets you continue where you left off |
+| Game progress, saved parks, up to 3 automatic backups, career statistics and settings (sound, volume, mouse sensitivity) | Needed to save and continue | Lets you continue where you left off and recover a damaged save |
+| Feedback you choose to send, and the game details you choose to include | Optional | Helps improve the game |
 
 The Game does **not** ask for your email address, phone number, location, age, contacts or payment details. It has **no adverts, no analytics and no tracking**, and nothing is sold or shared for marketing.
 
@@ -25,6 +26,10 @@ The Game does **not** ask for your email address, phone number, location, age, c
 
 - **On the GitHub Pages site:** everything stays in your browser's storage on your device. It is not sent to Sapphorion or anyone else.
 - **On the Claude link (claude.ai):** your profile and saves are also kept in a private area of the Game's storage on claude.ai, linked to your Claude account so you can continue on another device. That area is private to you: even Sapphorion, as the publisher, cannot read it. Anthropic provides that storage under its own privacy policy.
+
+## Feedback and park files
+
+If you send feedback, it goes from your own email app to Sapphorion, so your email address is visible. You choose whether to include game details (park day, rating, phase, browser and screen size). Feedback is used only to improve the Game and deleted when no longer needed. Park files you export stay wherever you save them, and are only seen by Sapphorion if you choose to send one.
 
 ## Other services the Game connects to
 

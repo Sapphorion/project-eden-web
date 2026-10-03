@@ -309,6 +309,16 @@ body.compact .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
 body.compact .overlay.soft{padding:8px}
 /* ---------- legal ---------- */
 #legalO{z-index:30}
+.bklist{display:flex;flex-direction:column;gap:6px}
+.bklist>div{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:5px;padding:8px 10px}
+.bklist>div>span{flex:1;min-width:0;font-size:13px}
+.bklist small{display:block;color:var(--muted);font-size:11.5px}
+.fbstars{display:flex;gap:6px;flex-wrap:wrap}
+.fbstars button{background:var(--ink);border:1px solid var(--line-hi);border-radius:5px;padding:7px 12px;font-family:var(--mono);color:var(--muted)}
+.fbstars button[aria-pressed="true"]{border-color:var(--amber);color:var(--amber);background:#2a2614}
+.fbfield{display:flex;flex-direction:column;gap:4px}
+.fbfield textarea{background:var(--ink);border:1px solid var(--line-hi);border-radius:4px;color:var(--text);padding:8px 10px;font:inherit;font-size:13px;min-height:58px;resize:vertical;box-sizing:border-box;width:100%;-webkit-user-select:text;user-select:text}
+#fbDetails{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--ink);border:1px solid var(--line);border-radius:5px;padding:8px;white-space:pre-wrap;margin:0}
 .overlay>.card.legal{width:min(720px,calc(100vw - 32px))}
 .legalbody{display:flex;flex-direction:column;gap:10px;-webkit-user-select:text;user-select:text}
 .legalbody h3{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.04em;margin:6px 0 0;color:var(--amber);text-transform:uppercase}
@@ -436,6 +446,8 @@ body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
       <button class="secondary" id="mLoad">Load last save</button>
       <button class="secondary" id="mProf">Profile</button>
       <button class="secondary sv" id="mBrief">Survival guide</button>
+      <button class="secondary" id="mBak">Backups &amp; export</button>
+      <button class="secondary" id="mFb">Send feedback</button>
       <button class="secondary" id="mLegal">Privacy &amp; license</button>
       <button class="secondary" id="mExit" style="grid-column:1 / -1">Exit to title</button>
     </div>
@@ -457,6 +469,35 @@ body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
     </details>
   </div>
 </div>
+<div class="overlay" id="bakO" hidden>
+  <div class="card" role="dialog" aria-labelledby="bakH">
+    <span class="label">Saved parks</span>
+    <h2 id="bakH">Backups &amp; export</h2>
+    <p id="bakNow"></p>
+    <div><div class="label" style="margin-bottom:6px">Automatic backups on this device</div><div class="bklist" id="bakList"></div></div>
+    <p style="font-size:12.5px;color:var(--muted)">The game keeps your last 3 backups: one each hour you play and one at the start of each park day. Restoring one replaces your current park (your current park is backed up first).</p>
+    <div><div class="label" style="margin-bottom:6px">Park file</div>
+      <div class="btnrow"><button class="secondary" id="bakExport">Export park file</button><button class="secondary" id="bakImport">Import park file</button><input type="file" id="bakFile" accept=".json,application/json" hidden></div>
+      <p style="font-size:12.5px;color:var(--muted);margin-top:6px">Export saves your whole park as a .json file. Use it to move to another device, keep your own copy, or send it to the developer if something breaks.</p></div>
+    <div id="bakMsg" style="min-height:1.1em;color:var(--amber);font-size:13px" role="status"></div>
+    <div class="btnrow"><button class="primary" id="bakClose">Close</button></div>
+  </div>
+</div>
+<div class="overlay" id="fbO" hidden>
+  <div class="card" role="dialog" aria-labelledby="fbH">
+    <span class="label">Help shape Project Eden</span>
+    <h2 id="fbH">Send feedback</h2>
+    <div class="fbfield"><span class="label">How much fun are you having?</span><div class="fbstars" id="fbStars"></div></div>
+    <label class="fbfield"><span class="label">What did you enjoy?</span><textarea id="fbLike" maxlength="600"></textarea></label>
+    <label class="fbfield"><span class="label">What was confusing, annoying or broken?</span><textarea id="fbBad" maxlength="600"></textarea></label>
+    <label class="fbfield"><span class="label">Anything else? Ideas welcome</span><textarea id="fbMore" maxlength="600"></textarea></label>
+    <label class="trait"><input type="checkbox" id="fbInc" checked><span>Include game details to help fix problems (shown below). No name or picture is included.</span></label>
+    <pre id="fbDetails"></pre>
+    <p style="font-size:12.5px;color:var(--muted)">Send by email opens your own email app with this message ready. Nothing is sent until you press send there. Your email address will be visible to the developer. See the <a href="#" data-legal="privacy" style="color:var(--volt)">privacy notice</a>.</p>
+    <div id="fbMsg" style="min-height:1.1em;color:var(--amber);font-size:13px" role="status"></div>
+    <div class="btnrow"><button class="primary" id="fbSend">Send by email</button><button class="secondary" id="fbCopy">Copy text</button><button class="secondary" id="fbClose">Close</button></div>
+  </div>
+</div>
 <div class="overlay" id="legalO" hidden>
   <div class="card legal" role="dialog" aria-labelledby="legalH">
     <span class="label">Project Eden · © 2026 Sapphorion</span>
@@ -470,13 +511,16 @@ body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
       <table><thead><tr><th>Information</th><th>Required?</th><th>Why</th></tr></thead><tbody>
         <tr><td>Director name (any name or nickname you choose)</td><td>Yes, to create a profile</td><td>Shows on your profile and end-of-run report</td></tr>
         <tr><td>Profile picture: a built-in icon, or a photo you choose to upload (shrunk to 128 × 128 px)</td><td>Optional. Icons are the default</td><td>Shows on your profile</td></tr>
-        <tr><td>Game progress, saved parks, career statistics and settings</td><td>Needed to save and continue</td><td>Lets you continue where you left off</td></tr>
+        <tr><td>Game progress, saved parks, up to 3 automatic backups, career statistics and settings</td><td>Needed to save and continue</td><td>Lets you continue where you left off and recover a damaged save</td></tr>
+        <tr><td>Feedback you choose to send, and the game details you choose to include</td><td>Optional</td><td>Helps improve the game</td></tr>
       </tbody></table>
       <p>The game does not ask for your email, phone number, location, age, contacts or payment details. It has no adverts, no analytics and no tracking, and nothing is sold or shared for marketing.</p>
       <h3>Where it is kept</h3>
       <ul><li><b>GitHub Pages site:</b> everything stays in your browser's storage on your device. It is not sent to Sapphorion or anyone else.</li>
         <li><b>Claude link (claude.ai):</b> your profile and saves are also kept in a private area of the game's storage on claude.ai, linked to your Claude account so you can continue on another device. That area is private to you: even Sapphorion, as the publisher, cannot read it. Anthropic provides that storage under its own privacy policy.</li></ul>
       <p id="legalWhere" style="color:var(--leaf)"></p>
+      <h3>Feedback and park files</h3>
+      <p>If you send feedback, it goes from your own email app to Sapphorion, so your email address is visible. You choose whether to include game details (park day, rating, phase, browser and screen size). Feedback is used only to improve the game and deleted when no longer needed. Park files you export stay wherever you save them, and are only seen by Sapphorion if you choose to send one.</p>
       <h3>Other services</h3>
       <p>Loading the game connects your browser to GitHub (hosting), Anthropic / claude.ai (the Claude link and its storage), Google Fonts (fonts) and cdnjs / Cloudflare (the three.js library). They receive technical information such as your IP address and browser type under their own privacy policies. Their servers are outside South Africa. This transfer is necessary to deliver the game, and these providers apply their own data-protection safeguards.</p>
       <h3>Why and on what basis</h3>
@@ -727,7 +771,7 @@ function genWorldData(){for(let i=0;i<10;i++){const l=genIsland();if(l>1800&&l<3
 genWorldData();
 
 // ================= definitions =================
-const GENPOW=24, DAYLEN=56, DAYPART=38;
+const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.16 (3 Oct 2026)';
 function nowMs(){return Date.now()+(S.warp||0);}
 function bTod(){const d=new Date(nowMs());return d.getHours()*60+d.getMinutes()+d.getSeconds()/60;}
 function parkDay(){return Math.floor((nowMs()-(S.founded||nowMs()))/86400000)+1;}
@@ -1889,9 +1933,9 @@ const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
 function groundAt(cx,cy){const r=canvas.getBoundingClientRect();ndc.set(((cx-r.left)/r.width)*2-1,-((cy-r.top)/r.height)*2+1);ray.setFromCamera(ndc,camera);ray.far=900;const h=ray.intersectObject(terrainMesh,false);return h.length?h[0].point.clone():null;}
 const keys={};
 window.addEventListener('keydown',e=>{
-  if(e.target.tagName==='INPUT')return; const k=e.key.toLowerCase();
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; const k=e.key.toLowerCase();
   if(e.repeat&&k.length===1&&'exfhgrtclvm123456'.includes(k))return; keys[k]=true;
-  if(k==='escape'){if(!$('legalO').hidden){$('legalClose').click();return;}if(!$('infoO').hidden){closeInfo();return;}if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
+  if(k==='escape'){if(!$('legalO').hidden){$('legalClose').click();return;}if(!$('fbO').hidden){$('fbO').hidden=true;return;}if(!$('bakO').hidden){$('bakO').hidden=true;return;}if(!$('infoO').hidden){closeInfo();return;}if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
   if(S.phase==='survival'&&!S.paused){
     if(k==='e')interact(); if(k==='x')toggleHide(); if(k==='f')eat(); if(k==='h')heal(); if(k==='g')throwFlare(); if(k==='r')reload(); if(k==='v')drink();
     if(k==='c')P.crouch=!P.crouch; if(k==='l')P.light=!P.light; if(k==='m')document.body.classList.toggle('bigmap');
@@ -3597,7 +3641,7 @@ $('profCancel').onclick=()=>{$('profO').hidden=true;if(!curProf()&&PROF.list.len
 $('profDel').onclick=()=>{
   if(!profDelConfirm){profDelConfirm=1;$('profDel').textContent='Click again to delete';$('profMsg').textContent='This removes the profile, its stats and its saved park from this device.';return;}
   const p=curProf(); if(!p)return;
-  try{localStorage.removeItem(lsKey());}catch(e){}
+  try{localStorage.removeItem(lsKey());localStorage.removeItem(bakKey());}catch(e){}
   if(dbApi){dbApi.collection('data/users/'+uid).doc(docId()).delete().catch(()=>{});}
   PROF.list=PROF.list.filter(o=>o.id!==p.id); PROF.cur=PROF.list[0]?PROF.list[0].id:null; saveProfiles();
   $('profO').hidden=true; if(S.phase!=='intro'){location.reload();return;} if(!PROF.cur)openProfile('create'); else refreshTitle();
@@ -3682,6 +3726,7 @@ async function saveGame(auto){
   if(saving)return false; saving=true;
   const data=serialize(), json=JSON.stringify(data); let where='';
   try{localStorage.setItem(lsKey(),json);where='this browser';}catch(e){}
+  maybeBackup(data,json);
   saveProfiles();
   if(dbApi){try{await saveRef().set({blob:json,at:data.at,day:S.day,level:S.level});where='your Claude account';}
     catch(e){if(!auto)menuMsg(e&&e.code==='quota_exceeded'?'Your park is too large to save online.':'The online save could not be reached.');}}
@@ -3728,12 +3773,91 @@ $('mLoad').onclick=async()=>{
   if(!confirmLoad){confirmLoad=1;$('mLoad').textContent='Click again to load';menuMsg('Anything since the last save will be lost.');return;}
   if(S.phase!=='build'){location.reload();return;}
   menuMsg('Loading…'); const o=await readSave(); if(!o){menuMsg('No saved park found.');confirmLoad=0;$('mLoad').textContent='Load last save';return;}
+  if(S.phase==='build')pushBackup(serialize(),'Before loading');
   applySave(o); closeMenu(); log('Loaded your park. Day '+S.day+'.','good'); if(S.awayMsg){log(S.awayMsg,'good');S.awayMsg='';}
 };
 $('mExit').onclick=()=>{if(!confirmExit){confirmExit=1;$('mExit').textContent='Click again to exit';menuMsg(S.phase==='build'?'Unsaved progress since the last save will be lost.':'This run will end.');return;}location.reload();};
 $('sSound').onclick=()=>{SET.sound=!SET.sound;saveSettings();syncSettings();if(SET.sound)tone('triangle',660,990,.12,.08);};
 $('sVol').oninput=e=>{SET.vol=+e.target.value;saveSettings();};
 $('sSens').oninput=e=>{SET.sens=+e.target.value;saveSettings();};
+// ================= backups, park files & feedback =================
+const bakKey=()=>{const p=curProf();return !p||p.legacy?'eden-bak':'eden-bak-'+p.id;};
+function readBackups(){try{return JSON.parse(localStorage.getItem(bakKey())||'[]');}catch(e){return [];}}
+function pushBackup(data,why,json){
+  try{const list=readBackups();list.unshift({at:data.at||Date.now(),day:data.s.day,level:data.s.level,money:Math.round(data.s.money),why:why||'',blob:json||JSON.stringify(data)});
+    while(list.length>3)list.pop();localStorage.setItem(bakKey(),JSON.stringify(list));return true;}catch(e){return false;}
+}
+function maybeBackup(data,json){const last=readBackups()[0];if(!last||data.at-last.at>3600000||data.s.day!==last.day)pushBackup(data,!last?'First save':data.s.day!==last.day?'New park day':'Hourly',json);}
+let bakConfirm=-1;
+function openBackups(){bakConfirm=-1;$('bakMsg').textContent='';renderBackups();$('bakO').hidden=false;}
+function renderBackups(){
+  const build=S.phase==='build';
+  $('bakNow').textContent=build?('Current park: Day '+S.day+' · '+'★'.repeat(S.level)+' · '+fmt(S.money)+'. '+(lastSave?'Last saved '+ago(lastSave.at)+'.':'Not saved yet.')):'Backups and park files are available while the park is running. Survive first!';
+  const L=$('bakList'); L.innerHTML=''; const list=readBackups();
+  if(!list.length){const d=document.createElement('div');d.innerHTML='<span>No backups yet. The first one is made the next time the park saves.</span>';L.appendChild(d);}
+  list.forEach((b,i)=>{const d=document.createElement('div');const sp=document.createElement('span');sp.textContent='Day '+b.day+' · '+'★'.repeat(b.level||1)+' · '+fmt(b.money);
+    const sm=document.createElement('small');sm.textContent=ago(b.at)+(b.why?' · '+b.why:'');sp.appendChild(sm);
+    const bt=document.createElement('button');bt.className='secondary';bt.textContent=bakConfirm===i?'Click again':'Restore';bt.disabled=!build;bt.onclick=()=>restoreBackup(i);d.append(sp,bt);L.appendChild(d);});
+  $('bakExport').disabled=!build; $('bakImport').disabled=!build;
+}
+function validSave(o){return o&&o.v===1&&o.s&&typeof o.s.day==='number'&&Array.isArray(o.B)&&Array.isArray(o.D)&&Array.isArray(o.F)&&Array.isArray(o.roads)&&Array.isArray(o.cl);}
+function restoreBackup(i){
+  if(bakConfirm!==i){bakConfirm=i;$('bakMsg').textContent='Your current park will be backed up, then replaced.';renderBackups();return;}
+  const b=readBackups()[i]; let o=null; try{o=JSON.parse(b.blob);}catch(e){}
+  if(!validSave(o)){$('bakMsg').textContent='That backup could not be read.';return;}
+  pushBackup(serialize(),'Before restore'); applySave(o); saveGame(true); bakConfirm=-1;
+  $('bakO').hidden=true; closeMenu(); log('Backup restored. Day '+S.day+'.','good');
+}
+$('bakExport').onclick=async()=>{
+  const data=serialize(); data.kind='project-eden-park'; const json=JSON.stringify(data);
+  const pr=curProf(); const name='project-eden-'+((pr&&pr.name)||'park').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-day'+S.day+'.json';
+  let dl=null; try{const c=window.claude;if(c&&c.use)dl=await Promise.race([c.use('downloads'),new Promise(r=>setTimeout(()=>r(null),1500))]);}catch(e){}
+  if(dl){try{await dl.save({filename:name,data:json});$('bakMsg').textContent='Park file saved.';}catch(e){$('bakMsg').textContent=e&&e.code==='declined'?'Export cancelled.':'This view cannot save files. Try the GitHub Pages version.';}return;}
+  try{const url=URL.createObjectURL(new Blob([json],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);$('bakMsg').textContent='Park file downloaded: '+name;}
+  catch(e){$('bakMsg').textContent='Your browser blocked the download.';}
+};
+$('bakImport').onclick=()=>$('bakFile').click();
+$('bakFile').onchange=e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>8e6){$('bakMsg').textContent='That file is too large to be a Project Eden park.';return;}
+  const r=new FileReader();r.onload=()=>{let o=null;try{o=JSON.parse(r.result);}catch(_){}
+    if(!validSave(o)){$('bakMsg').textContent='That is not a Project Eden park file.';return;}
+    pushBackup(serialize(),'Before import'); applySave(o); saveGame(true); $('bakO').hidden=true; closeMenu(); log('Park imported. Day '+S.day+'.','good');};
+  r.onerror=()=>{$('bakMsg').textContent='That file could not be read.';}; r.readAsText(f);};
+$('bakClose').onclick=()=>{$('bakO').hidden=true;};
+$('mBak').onclick=openBackups;
+// feedback
+let fbFun=0;
+function fbDetails(){
+  const sv=S.phase==='survival'||S.phase==='over';
+  return ['Game version: '+GAME_VERSION,'Phase: '+(sv?'after the collapse':S.phase==='build'?'building':S.phase),'Park day: '+S.day+' · rating '+S.level+'/5 · peak visitors '+S.peak,
+    'Animals: '+dinos.filter(d=>d.kind!=='compy').length+' · buildings: '+bList.length+' · happiness '+Math.round(S.happy)+'%',
+    sv?'Survival: level '+P.level+', '+Math.round(P.survived)+'s survived, zone stage '+(Z.k+1):'Strain: '+Math.round(S.instability)+'%',
+    'Device: '+(document.body.classList.contains('touch')?'touch':'mouse')+' · screen '+innerWidth+'×'+innerHeight+' · '+(dbApi?'played on Claude':'browser'),
+    'Browser: '+navigator.userAgent.slice(0,140)].join('\n');
+}
+function fbText(){
+  const parts=['Fun: '+(fbFun?fbFun+'/5':'not rated'),'','Enjoyed:',$('fbLike').value.trim()||'-','','Confusing or broken:',$('fbBad').value.trim()||'-','','Other ideas:',$('fbMore').value.trim()||'-'];
+  if($('fbInc').checked)parts.push('','--- Game details ---',fbDetails());
+  return parts.join('\n');
+}
+function openFeedback(){
+  const st=$('fbStars');st.innerHTML='';
+  for(let i=1;i<=5;i++){const b=document.createElement('button');b.textContent=i+(i===1?' meh':i===5?' love it':'');b.setAttribute('aria-pressed',fbFun===i?'true':'false');b.onclick=()=>{fbFun=i;openFeedback();};st.appendChild(b);}
+  $('fbDetails').textContent=fbDetails(); $('fbDetails').hidden=!$('fbInc').checked; $('fbMsg').textContent=''; $('fbO').hidden=false;
+}
+$('fbInc').onchange=()=>{$('fbDetails').hidden=!$('fbInc').checked;};
+$('fbSend').onclick=()=>{
+  const body=fbText(); if(!fbFun&&![$('fbLike'),$('fbBad'),$('fbMore')].some(t=>t.value.trim())){$('fbMsg').textContent='Add a rating or a few words first.';return;}
+  const url='mailto:sapphorion@gmail.com?subject='+encodeURIComponent('Project Eden feedback · Day '+S.day)+'&body='+encodeURIComponent(body);
+  const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+  $('fbMsg').textContent='Your email app should open with the message ready. If it does not, use Copy text and email it to sapphorion@gmail.com.';
+};
+$('fbCopy').onclick=async()=>{const t=fbText();let ok=false;try{await navigator.clipboard.writeText(t);ok=true;}catch(e){}
+  if(!ok){try{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();ok=document.execCommand('copy');ta.remove();}catch(e){}}
+  $('fbMsg').textContent=ok?'Copied. Paste it into an email to sapphorion@gmail.com or a message to the developer.':'Copying was blocked. Select the text in the boxes and copy it by hand.';};
+$('fbClose').onclick=()=>{$('fbO').hidden=true;};
+$('mFb').onclick=openFeedback;
+
 // ================= privacy & license =================
 let wipeConfirm=0;
 function openLegal(tab){
@@ -3758,7 +3882,7 @@ $('legalWipe').onclick=async()=>{
 renderProfChip();
 window.__eden={PROF,openBrief,warp:h=>{S.warp=(S.warp||0)+h*3600000;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
-  techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
+  readBackups,pushBackup,fbText,techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
 refreshWorld();
 requestAnimationFrame(loop);

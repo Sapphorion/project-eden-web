@@ -17,7 +17,9 @@ A browser park-builder: run a dinosaur park on a volcanic island.
 Each player creates a director profile (name and picture) with their own saved park and career stats. Profiles and saves are stored in your browser on this site.
 
 ## Feedback for testers
-Please note what you were doing when something felt wrong or broke, your device and browser, and how many days you'd played.
+Use **Menu → Send feedback** in the game. It fills in your park day, rating and device so problems are easier to fix. If something breaks, **Menu → Backups & export** can restore an earlier backup or export your park file to send along.
+
+It helps to mention what you were doing when something felt wrong or broke.
 
 ## Credits
 Profile pictures are icons from [game-icons.net](https://game-icons.net) by Lorc, Delapouite and contributors, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 3D rendering by [three.js](https://threejs.org) (MIT).
