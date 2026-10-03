@@ -154,6 +154,8 @@ button.trait:hover{border-color:var(--amber);background:#221f12}
 #intelList{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#c9d4c7;line-height:1.4}
 #intelList div{border-left:2px solid var(--volt);padding-left:8px}
 #threat{color:var(--alert);font-weight:700;font-size:13px}
+#sonar{position:fixed;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:6}
+#sonar i{position:absolute;left:-10px;top:-9px;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:18px solid var(--c,#fff);transform-origin:10px 9px;filter:drop-shadow(0 0 5px var(--c,#fff))}
 #crosshair{position:fixed;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);pointer-events:none;z-index:6}
 #crosshair::before,#crosshair::after{content:'';position:absolute;background:rgba(255,255,255,.85);box-shadow:0 0 2px #000}
 #crosshair::before{left:12px;top:2px;width:2px;height:22px;clip-path:polygon(0 0,100% 0,100% 35%,0 35%,0 65%,100% 65%,100% 100%,0 100%)}
@@ -340,6 +342,9 @@ body.compact .overlay.soft{padding:8px}
       <div class="row"><span>Next rating</span><span class="num" id="nextInfo">0</span></div>
       <div class="row"><span>Fence sections</span><span class="num" id="fenceInfo">0</span></div>
       <div class="row"><span>Dinosaurs</span><span class="num" id="dinoInfo">0</span></div>
+      <div class="row"><span>Animal comfort</span><span class="num" id="comfInfo">—</span></div>
+      <div class="row" id="rowRes" hidden><span>Research</span><span class="num" id="resInfo"></span></div>
+      <div class="row" id="rowExp" hidden><span>Expedition</span><span class="num" id="expInfo"></span></div>
       <div class="row"><span>Visitor capacity</span><span class="num" id="capInfo">0</span></div>
       <div class="row"><span>Park hype</span><span class="num" id="hypeInfo">0</span></div>
       <div class="label" style="margin-top:2px">Director's checklist</div>
@@ -384,6 +389,7 @@ body.compact .overlay.soft{padding:8px}
     <div id="intelList"></div>
   </div>
   <div id="crosshair"></div>
+  <div id="sonar"></div>
   <div id="lockHint" class="panel">Click to look around and aim · Esc frees the mouse</div>
   <div id="prompt" class="panel" hidden></div>
   <div id="wbar"></div>
@@ -655,6 +661,9 @@ const B={
   tower:{name:'Observation Tower',cost:900,b:1,attr:1,desc:'Needs a road beside it. Paddocks within 8 tiles earn 25% more hype.'},
   aviary:{name:'Aviary',cost:2800,b:1,size:3,attr:1,desc:'3×3 dome for flying reptiles. Add Pteranodons from the Dinosaurs tab. Needs a road beside it.'},
   lagoon:{name:'Mosasaurus Lagoon',cost:3500,b:1,size:3,attr:1,desc:'3×3 show tank with grandstand. Add a Mosasaurus from the Dinosaurs tab. Needs a road beside it.'},
+  hfeed:{name:'Plant feeder',cost:150,b:1,feeder:'herb',feeds:4,desc:'Place inside a paddock. Feeds up to 4 plant-eaters.'},
+  mfeed:{name:'Meat feeder',cost:250,b:1,feeder:'meat',feeds:3,desc:'Place inside a paddock. Feeds up to 3 predators.'},
+  dig:{name:'Fossil Dig Site',cost:600,b:1,unique:1,desc:'Send fossil expeditions around the world. Complete a genome to hatch a new species. Click it to plan an expedition.'},
   tour:{name:'Jeep Tours',cost:1500,b:1,attr:1,desc:'Tour station. Jeeps drive guests along your roads past the paddocks. Needs a road beside it. Click it to buy more jeeps.'},
   bench:{name:'Bench',cost:40,b:1,decor:1,ap:1.2,desc:'Somewhere to sit. Bigger crowds need more seating. Click or drag.'},
   lamp:{name:'Lamp post',cost:60,b:1,decor:1,ap:.8,desc:'Lights the paths so guests feel safe after dark. Click or drag.'},
@@ -670,6 +679,33 @@ const B={
   souvenir:{name:'Souvenir kiosk',cost:320,b:1,decor:1,stall:'shop',ap:2,desc:'Stall. Needs a road beside it. Sells postcards and plushies.'},
 };
 const isDecor=t=>!!(B[t]&&B[t].decor);
+const isFeeder=t=>!!(B[t]&&B[t].feeder);
+// herd sizes each species is comfortable with [min,max] in one paddock
+const SOCIAL={galli:[2,10],para:[2,8],stego:[1,4],trike:[1,4],brachio:[1,3],raptor:[2,6],dilo:[1,3],rex:[1,1]};
+const START_GENOMES={galli:100,para:100,stego:100,trike:100};
+const TECH={
+  fence2:{name:'Reinforced fences',cost:2000,min:4,desc:'Fences wear 40% slower and take 40% less damage.'},
+  market:{name:'Marketing campaign',cost:2000,min:5,desc:'+15% park hype.'},
+  ferry:{name:'Ferry logistics',cost:1500,min:3,desc:'Ferries bring 25% more guests each trip.'},
+  incub:{name:'Fast incubation',cost:2500,min:6,desc:'Hatching any dinosaur costs 20% less.'},
+  fossil:{name:'Field palaeontology',cost:3000,min:6,desc:'Expeditions are 30% faster and bring back 50% more genome.'},
+  grid:{name:'Grid efficiency',cost:3000,min:8,desc:'Each generator powers 8 more fence sections.',req:'fence2'},
+  condition:{name:'Behavioural conditioning',cost:3500,min:10,desc:'+10 comfort for every animal.',req:'incub'},
+  vet:{name:'Veterinary wing',cost:3000,min:8,desc:'Stressed animals put half as much strain on park systems.',req:'condition'},
+  watch:{name:'Park surveillance',cost:4000,min:12,desc:'Half as many security incidents and faults.',req:'grid'},
+};
+const SITES={
+  gobi:{short:'Gobi',name:'Gobi Desert, Mongolia',pool:['raptor'],cost:1200,min:4,lv:1},
+  kayenta:{short:'Kayenta',name:'Kayenta Formation, Arizona',pool:['dilo'],cost:1500,min:5,lv:1},
+  tendaguru:{short:'Tendaguru',name:'Tendaguru, Tanzania',pool:['brachio'],cost:2500,min:8,lv:2},
+  niobrara:{short:'Niobrara',name:'Niobrara Chalk, Kansas',pool:['ptero','mosa'],cost:3500,min:10,lv:3},
+  hellcreek:{short:'Hell Creek',name:'Hell Creek, Montana',pool:['rex'],cost:4000,min:12,lv:3},
+};
+const FINDS=['a partial skull','a femur','a run of vertebrae','fossilised eggshell','a jaw with teeth','a near-complete limb','amber with preserved blood'];
+const hasGenome=k=>!D[k]||k==='compy'||(S.genome&&(S.genome[k]||0)>=100);
+const dCost=t=>Math.round(D[t].cost*(S.tech&&S.tech.incub?.8:1));
+const genPow=()=>GENPOW+(S.tech&&S.tech.grid?8:0);
+const fenceMul=()=>S.tech&&S.tech.fence2?.6:1;
 const MAXJEEPS=4, JEEPCOST=1200;
 const bSize=t=>(B[t]&&B[t].size)||1;
 function footprint(t,x,z){const s=bSize(t),o=s===3?-1:0,out=[];for(let i=0;i<s;i++)for(let j=0;j<s;j++)out.push([x+o+i,z+o+j]);return out;}
@@ -686,7 +722,7 @@ const D={
   ptero:{name:'Pteranodon',cost:1500,carn:true,special:'aviary',hype:9},
   mosa:{name:'Mosasaurus',cost:6000,carn:true,special:'lagoon',hype:34},
 };
-const UNLOCK={raptor:2,dilo:2,brachio:2,sec:2,waterpark:2,lab:3,aviary:3,ptero:3,hotel:3,hybrid:3,rex:4,lagoon:4,mosa:4};
+const UNLOCK={sec:2,waterpark:2,lab:2,aviary:3,ptero:3,hotel:3,hybrid:3,lagoon:4,mosa:4};
 const LEVELS=[0,100,300,650,1200];
 const TRAITWARN={size:'tears through fences fast and takes far more punishment',speed:'can outrun you, do not race it',nv:'sees you from far away in the dark',camo:'is nearly invisible at night and hunts without a sound, watch for the eyes',intel:'can open doors, so hiding indoors will not stop it'};
 const MAINT={low:{cost:.02,decay:.25,inst:.06},standard:{cost:.06,decay:0,inst:0},high:{cost:.14,decay:0,inst:-.05}};
@@ -704,7 +740,7 @@ function dStats(kind,tr){
 // ================= state =================
 const S={phase:'intro',money:30000,day:1,dayT:0,visitors:0,peak:0,hype:0,maint:'standard',level:1,
   instability:0,minDay:15,founded:0,warp:0,netRate:0,doomDay:ri(12,22),statusS:0,statusT:0,collapsed:false,order:0,dirty:true,paused:false,
-  pendingHybrid:null,hybridCount:0,cap:0,draw:0,vcap:0,vtarget:0,display:0,f:{},cause:'',causeKey:'',collapseDay:0,warned:{},happy:50,happyParts:[],recaps:0};
+  pendingHybrid:null,hybridCount:0,cap:0,draw:0,vcap:0,vtarget:0,display:0,f:{},cause:'',causeKey:'',collapseDay:0,warned:{},happy:50,happyParts:[],recaps:0,genome:Object.assign({},START_GENOMES),tech:{},research:null,exped:null};
 const cells=[...Array(N)].map(()=>Array(N).fill(null));
 const bList=[], fList=[], dinos=[], peeps=[], vehicles=[], cars=[];
 let regionId=[], regionPublic=[], regionSize=[], viewable=new Set(), roadConn=new Set();
@@ -995,6 +1031,22 @@ function makeBuilding(type){
     for(let k=0;k<3;k++)g.add(box(6,.3+k*.3,.45,mat(k%2?0x2f4f6a:0x3d6a86),0,.15+k*.15,-1.85-k*.4));
     g.add(cyl(.1,.1,.5,mat(0xe8553f),2,.75,1.5,8));
     g.userData.waterY=.55; beacon(g,1.3);
+  }else if(type==='hfeed'){
+    g.add(box(1.3,.35,.7,mat(0x7a5c3c),0,.18,0)); g.add(box(1.2,.08,.6,mat(0x5a4330),0,.33,0));
+    for(let i=0;i<6;i++){const h=new THREE.Mesh(new THREE.IcosahedronGeometry(.22,0),mat(i%2?0x7f9a3a:0xb8a650));h.position.set(-.45+i*.18,.45,rand(-.15,.15));g.add(h);}
+    for(const x of[-.6,.6])g.add(cyl(.05,.05,1.1,mat(0x5a4330),x,.55,0,5)); g.add(box(1.4,.06,.9,mat(0x6a7a4a),0,1.12,0));
+  }else if(type==='mfeed'){
+    g.add(box(.7,.12,.7,mat(0x6a6e66),0,.06,0)); g.add(cyl(.07,.08,2.2,mat(0x4a4e48),0,1.1,0,6));
+    const arm=box(1.0,.08,.08,mat(0x4a4e48),.45,2.15,0); g.add(arm); g.add(cyl(.015,.015,.6,mat(0x222222),.9,1.85,0,4));
+    const meat=new THREE.Mesh(new THREE.DodecahedronGeometry(.22,0),mat(0x9a3a32)); meat.position.set(.9,1.45,0); meat.scale.set(1,1.4,.8); g.add(meat);
+  }else if(type==='dig'){
+    g.add(box(1.8,.06,1.8,mat(0xb89a6a),0,.03,0));
+    g.add(box(1.1,.25,.9,mat(0x6a5038),.3,.0,.3));
+    const tent=new THREE.Mesh(new THREE.ConeGeometry(.75,.9,4),mat(0xd8c89a)); tent.rotation.y=Math.PI/4; tent.position.set(-.45,.45,-.45); tent.castShadow=true; g.add(tent);
+    for(let i=0;i<4;i++){const b=box(.32,.06,.08,mat(0xece4d0),.1+i*.12,.16,.25+(i%2)*.15);b.rotation.y=i*.7;g.add(b);}
+    const sk=box(.28,.18,.2,mat(0xece4d0),.55,.18,.5);g.add(sk);
+    for(const [x,z] of [[.85,-.85],[-.85,.85],[.85,.85]])g.add(cyl(.03,.03,.5,mat(0xf0b240),x,.25,z,4));
+    g.add(box(.5,.35,.4,mat(0x2f4f6a),.55,.18,-.5)); beacon(g,1.0);
   }else if(type==='tour'){
     g.add(box(1.8,.06,1.8,mat(0x8a8478),0,.03,0));
     g.add(box(1.2,.9,.9,mat(0xe8dcc0),-.25,.45,-.45));
@@ -1256,7 +1308,7 @@ function computeRoads(){
 function hasAccess(b){if(b.type==='visitor')return roadConn.size>0;for(const [x,z] of b.tiles)for(const [dx,dz] of DIRS){if(roadConn.has(key(x+dx,z+dz)))return true;}return false;}
 function runningGens(){return listType('gen').filter(g=>S.phase==='survival'?g.on:!S.collapsed);}
 function computePower(){
-  const gens=runningGens(); S.cap=gens.length*GENPOW;
+  const gens=runningGens(); S.cap=gens.length*genPow();
   const fs=fList.filter(f=>f.hp>0);
   for(const f of fs){f.gd=1e9;for(const g of gens)f.gd=Math.min(f.gd,Math.abs(g.x-f.x)+Math.abs(g.z-f.z));}
   fs.sort((a,b)=>a.gd-b.gd);
@@ -1314,11 +1366,13 @@ const lockLv=t=>UNLOCK[t]||1;
 const unlocked=t=>S.level>=lockLv(t);
 function check(t,x,z){
   if(!unlocked(t))return{ok:false,why:'Unlocks at park rating '+'★'.repeat(lockLv(t))};
+  if(D[t]&&!hasGenome(t))return{ok:false,why:D[t].name+' genome is only '+Math.floor(S.genome[t]||0)+'% complete. Send a fossil expedition from the Dig Site.'};
   if(B[t]&&B[t].b){
     for(const [a,c] of footprint(t,x,z)){const w=baseCheck(a,c,t==='harbor');if(w)return{ok:false,why:bSize(t)>1?'Needs '+bSize(t)+'×'+bSize(t)+' clear ground: '+w.toLowerCase():w};}
     if(B[t].unique&&countType(t))return{ok:false,why:'You can only have one '+B[t].name};
     if(B[t].decor){const r=regionId[x]?regionId[x][z]:-1;if(isEnclosure(r))return{ok:false,why:'Decorations go in public areas, not inside paddocks'};
       if(B[t].stall&&!adjRoad(x,z))return{ok:false,why:'Stalls need a road beside them that joins the Visitor Centre'};}
+    if(isFeeder(t)){const r=regionId[x]?regionId[x][z]:-1;if(!isEnclosure(r))return{ok:false,why:'Feeders go inside a closed paddock'};}
     if(t==='harbor'&&!waterDir(x,z))return{ok:false,why:'A harbor needs open sea right in front of it'};
     const cost=B[t].cost+footprint(t,x,z).reduce((s,[a,c])=>s+clearCost(a,c),0);
     if(S.money<cost)return{ok:false,why:'Not enough funds',cost};
@@ -1334,8 +1388,8 @@ function check(t,x,z){
     if(!c||c.type!==host)return{ok:false,why:t==='ptero'?'Click an Aviary to release a Pteranodon into it':'Click a Mosasaurus Lagoon to add the Mosasaurus'};
     if(t==='ptero'&&c.pteros.length>=6)return{ok:false,why:'This aviary is full (6 Pteranodons)'};
     if(t==='mosa'&&c.mosa)return{ok:false,why:'This lagoon already has a Mosasaurus'};
-    if(S.money<D[t].cost)return{ok:false,why:'Not enough funds'};
-    return{ok:true,cost:D[t].cost,host:c};
+    if(S.money<dCost(t))return{ok:false,why:'Not enough funds'};
+    return{ok:true,cost:dCost(t),host:c};
   }
   if(D[t]||t==='hybrid'){
     const kind=t==='hybrid'?(S.pendingHybrid&&S.pendingHybrid.base):t;
@@ -1346,7 +1400,7 @@ function check(t,x,z){
     const r=regionId[x][z];
     if(!isEnclosure(r))return{ok:false,why:'Needs a closed paddock'};
     if(regionSize[r]<D[kind].minRegion)return{ok:false,why:'Paddock too small. '+D[kind].name+' needs '+D[kind].minRegion+' tiles inside, this has '+regionSize[r]};
-    if(t!=='hybrid'&&S.money<D[t].cost)return{ok:false,why:'Not enough funds'};
+    if(t!=='hybrid'&&S.money<dCost(t))return{ok:false,why:'Not enough funds'};
     return{ok:true,region:r};
   }
   if(t==='bulldoze'){if(!inB(x,z))return{ok:false,why:''};if(cells[x][z]||dinoAt(x,z))return{ok:true};if(hasVeg(x,z)&&tt[x][z]!==ROCK)return{ok:true,cost:30};return{ok:false,why:'Nothing to clear here'};}
@@ -1417,9 +1471,10 @@ function act(t,x,z){
   }else if(D[t]||t==='hybrid'){
     let kind=t,tr={},name=D[t]?D[t].name:'';
     if(t==='hybrid'){kind=S.pendingHybrid.base;tr=S.pendingHybrid.traits;name=S.pendingHybrid.name;S.pendingHybrid=null;}
-    else S.money-=D[t].cost;
+    else S.money-=dCost(t);
     spawnDino(kind,tr,t==='hybrid',name,x,z);
     stat('hatched',1);
+    if(!S.warned.feed&&!bList.some(b=>isFeeder(b.type))){S.warned.feed=1;log('Animals need food. Put a '+(D[kind].carn?'Meat':'Plant')+' feeder inside the paddock (Dinosaurs tab). Click any animal to see its needs.','warn');}
     log((t==='hybrid'?'Embryo hatched: ':'Hatched: ')+name+'.',t==='hybrid'||D[kind].carn?'warn':'good');
     if(!viewable.has(r.region))log('Visitors cannot see this paddock yet. Run a road beside its fence.','warn');
     if(t==='hybrid')selectTool(null);
@@ -1466,7 +1521,7 @@ function spawnDino(kind,tr,hybrid,name,x,z){
   const st=dStats(kind,tr); const mesh=makeDinoMesh(kind,tr,hybrid); mesh.scale.setScalar(st.size);
   const d={id:dinoId++,kind,traits:tr,hybrid,name,st,mesh,x,z,homeX:x,homeZ:z,pos:tileCenter(x,z),target:null,wait:rand(0,2),lastDir:[1,0],escaped:false,escT:0,
     state:'wander',wt:null,wtT:0,cd:0,lost:0,face:rand(0,6),ph:rand(0,6),amp:0,biteT:0,roarT:0,sleep:0,moving:false,running:false,stuck:0,seenT:-99,sideT:0,fleeT:0,
-    hp:HPMAX[kind]*(tr.size?1.6:1),tq:0,dead:false,stunT:0,tgt:null};
+    hp:HPMAX[kind]*(tr.size?1.6:1),tq:0,dead:false,stunT:0,tgt:null,comfort:70,needs:[]};
   mesh.position.copy(d.pos); mesh.rotation.y=d.face; dinoGroup.add(mesh); dinos.push(d); S.order++; return d;
 }
 function removeDino(d){dinoGroup.remove(d.mesh);dinos.splice(dinos.indexOf(d),1);S.order++;}
@@ -1479,8 +1534,8 @@ function ghostSet(list){let n=0;for(const [x,z,c] of list){if(n>=900||!inB(x,z))
   ghost.count=n;ghost.instanceMatrix.needsUpdate=true;if(ghost.instanceColor)ghost.instanceColor.needsUpdate=true;}
 
 // ================= tools UI =================
-const TABS={build:['paddock','fence','road','gen','visitor','harbor','food','shop','sec','lab','bulldoze'],attr:['tour','waterpark','tower','hotel','aviary','lagoon'],
-  decor:['plaza','bench','lamp','flowers','hedge','bin','picnic','icecream','hotdog','balloon','souvenir','fountain','statue','bulldoze'],dinos:['galli','para','stego','trike','raptor','dilo','brachio','rex','ptero','mosa','hybrid'],ops:['repair','tranq','bulldoze']};
+const TABS={build:['paddock','fence','road','gen','visitor','harbor','food','shop','dig','sec','lab','bulldoze'],attr:['tour','waterpark','tower','hotel','aviary','lagoon'],
+  decor:['plaza','bench','lamp','flowers','hedge','bin','picnic','icecream','hotdog','balloon','souvenir','fountain','statue','bulldoze'],dinos:['hfeed','mfeed','galli','para','stego','trike','raptor','dilo','brachio','rex','ptero','mosa','hybrid'],ops:['repair','tranq','bulldoze']};
 const TOOLNAME={bulldoze:'Demolish',repair:'Repair fence',tranq:'Tranquilize',hybrid:'Hybrid'};
 const TOOLDESC={bulldoze:'Remove a structure (50% refund), sell a dinosaur or clear jungle ($30). Click or drag.',repair:'Restore a damaged fence section. Click or drag.',tranq:'Send a team to return an escaped dinosaur to its paddock. $500.',
   galli:'Fast, skittish herbivore. Low hype, harmless.',para:'Gentle herd animal with a honking crest. Cheap crowd-pleaser.',stego:'Armoured plant-eater. Swings its spiked tail at anyone too close.',
@@ -1488,7 +1543,7 @@ const TOOLDESC={bulldoze:'Remove a structure (50% refund), sell a dinosaur or cl
   ptero:'Click an Aviary to release one. Up to 6 per aviary.',mosa:'Click a Mosasaurus Lagoon to add one. Huge hype.',hybrid:'Open the Research Lab to design a spliced specimen.'};
 const DRAG=new Set(['paddock','fence','road']), PAINT=new Set(['bulldoze','repair','hedge','flowers','lamp','bench','bin']);
 const toolName=t=>B[t]?B[t].name:D[t]?D[t].name:TOOLNAME[t];
-function toolCostLabel(t){if(!unlocked(t))return 'Rating '+'★'.repeat(lockLv(t));if(B[t])return t==='road'?'$10 / tile':t==='paddock'||t==='fence'?'$25 / section':fmt(B[t].cost);if(D[t])return fmt(D[t].cost);
+function toolCostLabel(t){if(!unlocked(t))return 'Rating '+'★'.repeat(lockLv(t));if(B[t])return t==='road'?'$10 / tile':t==='paddock'||t==='fence'?'$25 / section':fmt(B[t].cost);if(D[t])return hasGenome(t)?fmt(dCost(t)):'Genome '+Math.floor(S.genome[t]||0)+'%';
   return t==='tranq'?'$500':t==='repair'?'by damage':t==='bulldoze'?'refund':(S.pendingHybrid?'ready':'design');}
 function renderTools(){
   const wrap=$('tools'); wrap.innerHTML='';
@@ -1496,7 +1551,9 @@ function renderTools(){
     if(t==='plaza'){const b=document.createElement('button');b.className='tool view';b.innerHTML='<b>Plaza view</b><span>zoom in</span>';b.title='Fly the camera to the Visitor Centre to decorate around it';b.onclick=plazaView;wrap.appendChild(b);continue;}
     const b=document.createElement('button'); b.className='tool'+(D[t]&&D[t].carn?' carn':'')+(unlocked(t)?'':' locked'); b.setAttribute('aria-pressed',tool===t?'true':'false');
     b.innerHTML='<b></b><span></span>'; b.firstChild.textContent=toolName(t); b.lastChild.textContent=toolCostLabel(t);
-    b.onclick=()=>{ if(!unlocked(t)){flashHint(toolName(t)+' unlocks at park rating '+'★'.repeat(lockLv(t))+'. Grow your peak visitors to '+LEVELS[lockLv(t)-1]+'.');return;}
+    if(D[t]&&!hasGenome(t))b.classList.add('locked');
+    b.onclick=()=>{ if(D[t]&&!hasGenome(t)){flashHint(D[t].name+' genome is '+Math.floor(S.genome[t]||0)+'% complete. Build a Fossil Dig Site and send expeditions to find more.');return;}
+      if(!unlocked(t)){flashHint(toolName(t)+' unlocks at park rating '+'★'.repeat(lockLv(t))+'. Grow your peak visitors to '+LEVELS[lockLv(t)-1]+'.');return;}
       if(t==='hybrid'&&!S.pendingHybrid){openLab();return;} selectTool(tool===t?null:t); };
     wrap.appendChild(b);
   }
@@ -1539,8 +1596,8 @@ function labSpec(){
 function updateLab(){
   const s=labSpec(); $('hCost').textContent=fmt(s.cost); $('hHype').textContent=Math.round(s.st.hype);
   const r=s.st.danger<5?1:s.st.danger<8?2:3; const el=$('hRisk'); el.dataset.r=r; el.textContent=['','Moderate','Severe','Extreme'][r];
-  const rexLocked=s.base==='rex'&&!unlocked('rex');
-  $('spliceBtn').disabled=S.money<s.cost||rexLocked; $('spliceBtn').textContent=rexLocked?'T. rex genome needs ★★★★':'Splice embryo';
+  const rexLocked=!hasGenome(s.base);
+  $('spliceBtn').disabled=S.money<s.cost||rexLocked; $('spliceBtn').textContent=rexLocked?D[s.base].name+' genome not complete yet':'Splice embryo';
 }
 document.querySelectorAll('#lab input').forEach(i=>i.addEventListener('input',updateLab));
 $('labClose').onclick=()=>{$('lab').hidden=true;};
@@ -1569,7 +1626,7 @@ function traitText(tr){const k=Object.keys(tr||{}).filter(x=>tr[x]);return k.len
 function rosterH(){
   const list=dinos.filter(d=>d.kind!=='compy'); const out=[];
   for(const d of list){const [st,c]=dinoStatus(d);const tr=traitText(d.traits);const r=regionId[d.homeX]?regionId[d.homeX][d.homeZ]:-1;
-    out.push(rowH(escH(d.name),st,(d.hybrid?'Hybrid '+D[d.kind].name+(tr?' · '+tr:''):D[d.kind].name)+' · hype '+Math.round(d.st.hype)+(r>=0&&regionSize[r]?' · paddock '+regionSize[r]+' tiles':''),c));}
+    out.push(rowH(escH(d.name),st,(d.hybrid?'Hybrid '+D[d.kind].name+(tr?' · '+tr:''):D[d.kind].name)+' · comfort '+Math.round(d.comfort==null?70:d.comfort)+'%'+(r>=0&&regionSize[r]?' · paddock '+regionSize[r]+' tiles':''),c));}
   for(const a of listType('aviary'))if(a.pteros.length)out.push(rowH('Pteranodon × '+a.pteros.length,hasAccess(a)?'On show':'No road',(a.pteros.length<6?(6-a.pteros.length)+' more will fit':'Aviary full')+' · hype '+a.pteros.length*D.ptero.hype,hasAccess(a)?'pos':'mid'));
   for(const l of listType('lagoon'))if(l.mosa)out.push(rowH('Mosasaurus',hasAccess(l)?'On show':'No road','Lagoon star · hype '+D.mosa.hype,hasAccess(l)?'pos':'mid'));
   return out;
@@ -1581,8 +1638,10 @@ function renderInfo(){
     if(!dinos.includes(o)){closeInfo();return;}
     const [st,c]=dinoStatus(o), tr=traitText(o.traits), def=D[o.kind];
     k=(o.hybrid?'Hybrid specimen':'Dinosaur')+' · '+def.name; h=escH(o.name);
-    body=kvH([['Status',st,c],['Species',def.name],['Hype',Math.round(o.st.hype)],['Temperament',def.carn?'Predator':CHARGE.has(o.kind)?'Defensive':'Docile',def.carn?'neg':''],['Danger',['None','Low','Moderate','High','Severe','Extreme'][Math.min(5,Math.round(o.st.danger))]],['Health',Math.round(o.hp)]])
-      +'<p class="ipara">'+(TOOLDESC[o.kind]||'')+(tr?' Spliced traits: '+tr+'.':'')+'</p>';
+    const cf=Math.round(o.comfort==null?70:o.comfort);
+    body=kvH([['Status',st,c],['Comfort',cf+'%',cf<40?'neg':cf<60?'mid':'pos'],['Species',def.name],['Hype',Math.round(o.st.hype*(.4+.6*cf/100))],['Temperament',def.carn?'Predator':CHARGE.has(o.kind)?'Defensive':'Docile',def.carn?'neg':''],['Danger',['None','Low','Moderate','High','Severe','Extreme'][Math.min(5,Math.round(o.st.danger))]],['Health',Math.round(o.hp)]])
+      +'<div><div class="label" style="margin-bottom:4px">Needs</div>'+(o.escaped?'<p class="ipara">Escaped animals cannot be cared for. Recapture it first.</p>':'<div class="ilist">'+(o.needs||[]).map(([l,v,tip])=>rowH(l,v<0?String(v):v>0?'+'+v:'OK',tip,v<0?'neg':'pos')).join('')+'</div>')+'</div>'
+      +'<p class="ipara">'+(TOOLDESC[o.kind]||'')+(tr?' Spliced traits: '+tr+'.':'')+' Unhappy animals draw smaller crowds, test their fences harder and put strain on the park.</p>';
     btns=btnH('sell',infoConfirm==='sell'?'Click again to sell':'Sell to another park ('+fmt(Math.round((o.hybrid?2500:def.cost)*.3))+')',false)+btnH('close','Close',true);
   }else{
     if(!bList.includes(o)){closeInfo();return;}
@@ -1636,6 +1695,36 @@ function renderInfo(){
         +'<p class="ipara">The shelves follow your animals. Every new species adds a new line of merchandise.</p>';
       const lv=o.lvl||0, cost=600*(lv+1);
       btns=(t==='shop'&&lv<3?btnH('stock','Upgrade stock to '+STOCKN[lv+1]+' · '+fmt(cost),true,S.money<cost):'')+btnH('sell',infoConfirm==='sell'?'Click again to demolish':'Demolish',false)+btnH('close','Close',!(t==='shop'&&lv<3));
+    }else if(t==='lab'){
+      tabs=[['research','Research'],['splice','Splicing']]; if(!infoTab)infoTab='research';
+      if(infoTab==='research'){
+        const cur=S.research; let h2='';
+        if(cur){const T=TECH[cur.id],tot=cur.end-cur.start,done=clamp((nowMs()-cur.start)/tot,0,1);
+          h2='<div><div class="row" style="margin-bottom:4px"><span class="label">Researching · '+T.name+'</span><span class="num" style="font-size:12px">'+fmtLeft(cur.end)+' left</span></div><div class="meter"><i style="width:'+done*100+'%;background:var(--volt)"></i></div></div>';}
+        const rows=Object.entries(TECH).map(([id,T])=>{const done=S.tech[id],busy=cur&&cur.id===id,req=T.req&&!S.tech[T.req];
+          const right=done?'Done':busy?'In progress':req?'Needs '+TECH[T.req].name:'<button class="secondary" style="padding:4px 10px" data-act="res:'+id+'"'+(cur||S.money<T.cost?' disabled':'')+'>'+fmt(T.cost)+' · '+T.min+' min</button>';
+          return rowH(T.name,right,T.desc,done?'pos':req?'mid':'');}).join('');
+        body=h2+'<div class="ilist">'+rows+'</div><p class="ipara">One project at a time. Research runs in real time and keeps going while you are away.</p>';
+      }else{
+        body=kvH([['Hybrids designed',S.hybridCount],['Embryo ready',S.pendingHybrid?escH(S.pendingHybrid.name):'None'],['Raptor genome',Math.floor(S.genome.raptor||0)+'%'],['T. rex genome',Math.floor(S.genome.rex||0)+'%']])
+          +'<p class="ipara">Splice traits into a Velociraptor or Tyrannosaurus genome to create a hybrid. You need the complete base genome first. Hybrids are hugely popular and hard to contain.</p>';
+      }
+      btns=(infoTab==='splice'?btnH('lab','Open genome splicing',true,!unlocked('hybrid')):'')+btnH('sell',infoConfirm==='sell'?'Click again to demolish':'Demolish',false)+btnH('close','Close',infoTab!=='splice');
+    }else if(t==='dig'){
+      tabs=[['exp','Expeditions'],['gen','Genomes']]; if(!infoTab)infoTab='exp';
+      if(infoTab==='exp'){
+        const cur=S.exped; let h2='';
+        if(cur){const st=SITES[cur.site],done=clamp((nowMs()-cur.start)/(cur.end-cur.start),0,1);
+          h2='<div><div class="row" style="margin-bottom:4px"><span class="label">Team in the field · '+st.name+'</span><span class="num" style="font-size:12px">'+fmtLeft(cur.end)+' left</span></div><div class="meter"><i style="width:'+done*100+'%;background:var(--amber)"></i></div></div>';}
+        const rows=Object.entries(SITES).map(([id,st])=>{const lock=S.level<st.lv, all=st.pool.every(hasGenome), dur=Math.round(st.min*(S.tech.fossil?.7:1));
+          const right=lock?'Rating '+'★'.repeat(st.lv):'<button class="secondary" style="padding:4px 10px" data-act="exp:'+id+'"'+(cur||S.money<st.cost?' disabled':'')+'>'+fmt(st.cost)+' · '+dur+' min</button>';
+          return rowH(st.name,right,'Fossils of '+st.pool.map(k=>D[k].name+' ('+Math.floor(S.genome[k]||0)+'%)').join(', ')+(all?' · genomes complete, finds sell to museums for profit':''),lock?'mid':'');}).join('');
+        body=h2+'<div class="ilist">'+rows+'</div><p class="ipara">Each expedition brings back fossils that fill in part of a genome. At 100% you can hatch that species. Expeditions run in real time while you are away.</p>';
+      }else{
+        const ks=Object.keys(D).filter(k=>k!=='compy');
+        body='<div class="ilist">'+ks.map(k=>{const v=Math.floor(S.genome[k]||0);return '<div><span>'+D[k].name+'</span><span class="r '+(v>=100?'pos':'mid')+'">'+(v>=100?'Complete':v+'%')+'</span><small><span class="meter" style="display:block;margin-top:3px"><i style="width:'+v+'%;background:'+(v>=100?'var(--leaf)':'var(--amber)')+'"></i></span></small></div>';}).join('')+'</div>';
+      }
+      btns=btnH('sell',infoConfirm==='sell'?'Click again to demolish':'Demolish',false)+btnH('close','Close',true);
     }else if(t==='tour'){
       const mine=vehicles.filter(v=>v.home===o&&v.placed).length;
       body=kvH([roadKV,['Jeeps',o.jeeps+' / '+MAXJEEPS],['On the road',mine],['Tours run',o.tours||0],['Hype',sgn(o.jeeps*5)],['Capacity added','+'+(40+o.jeeps*35)]])
@@ -1644,8 +1733,8 @@ function renderInfo(){
     }else{
       const extra=[];
       if(t==='sec')extra.push(['Ranger truck',vehicles.some(v=>v.home===o&&v.placed)?'On patrol':'Needs a road'],['Recaptures',S.recaps||0],['Loose now',dinos.filter(d=>d.escaped).length]);
-      else if(t==='gen')extra.push(['Powers','up to '+GENPOW+' sections'],['Grid',S.draw+' / '+S.cap,S.draw>S.cap?'neg':'pos']);
-      else if(t==='lab')extra.push(['Hybrids designed',S.hybridCount],['Embryo ready',S.pendingHybrid?escH(S.pendingHybrid.name):'None']);
+      else if(t==='gen')extra.push(['Powers','up to '+genPow()+' sections'],['Grid',S.draw+' / '+S.cap,S.draw>S.cap?'neg':'pos']);
+      else if(isFeeder(t)){const rs=feederRegions(o);const n=dinos.filter(d=>!d.escaped&&rs.has(regionId[d.x][d.z])&&(!!D[d.kind].carn===(def.feeder==='meat'))).length;extra.push(['Feeds','up to '+def.feeds+' '+(def.feeder==='meat'?'predators':'plant-eaters')],['Eating here',rs.size?n:'Not in a paddock',rs.size?'':'neg']);}
       else if(t==='aviary')extra.push(['Pteranodons',o.pteros.length+' / 6'],['Capacity added','+60']);
       else if(t==='lagoon')extra.push(['Mosasaurus',o.mosa?'Yes':'Not yet'],['Capacity added','+80']);
       else if(t==='hotel')extra.push(['Rooms','150 guests'],['Night guests',S.night?Math.min(S.visitors,listType('hotel').filter(hasAccess).length*150).toLocaleString('en-US'):'—']);
@@ -1654,10 +1743,9 @@ function renderInfo(){
       else if(t==='tower')extra.push(['Hype boost','+25% within 8 tiles']);
       if(def.decor){const vcB=listType('visitor')[0];let near=false;for(let dx=-2;dx<=2&&!near;dx++)for(let dz=-2;dz<=2;dz++)if(roadConn.has(key(o.x+dx,o.z+dz))){near=true;break;}
         extra.push(['Counts for happiness',near?'Yes':'No, too far from a road',near?'pos':'neg']);if(vcB&&Math.max(Math.abs(o.x-vcB.x),Math.abs(o.z-vcB.z))<=6)extra.push(['Plaza bonus','+50%','pos']);}
-      const needsRoad=(!def.decor||def.stall)&&t!=='gen'&&t!=='lab'&&t!=='sec';
+      const needsRoad=(!def.decor||def.stall)&&t!=='gen'&&t!=='sec'&&!def.feeder;
       body=kvH((needsRoad?[roadKV]:[]).concat(extra))+'<p class="ipara">'+def.desc+'</p>';
-      if(t==='lab')btns+=btnH('lab','Open genome splicing',true);
-      btns+=btnH('sell',infoConfirm==='sell'?'Click again to '+(def.decor?'remove':'demolish'):(def.decor?'Remove':'Demolish'),false)+btnH('close','Close',t!=='lab');
+      btns+=btnH('sell',infoConfirm==='sell'?'Click again to '+(def.decor?'remove':'demolish'):(def.decor?'Remove':'Demolish'),false)+btnH('close','Close',true);
     }
   }
   $('infoK').textContent=k; if(infoCache.h!==h){infoCache.h=h;$('infoH').innerHTML=h;}
@@ -1671,6 +1759,8 @@ function infoAct(a){
   if(a.startsWith('tab:')){infoTab=a.slice(4);renderInfo();$('infoO').firstElementChild.scrollTop=0;return;}
   if(a==='plaza'){closeInfo();plazaView();return;}
   if(a==='lab'){closeInfo();openLab();return;}
+  if(a.startsWith('res:')){const id=a.slice(4),T=TECH[id];if(S.research||S.tech[id]||S.money<T.cost)return;S.money-=T.cost;const now=nowMs();S.research={id,start:now,end:now+T.min*60000};log('Research started: '+T.name+'. Ready in '+T.min+' minutes.','good');tone('triangle',400,800,.2,.06);renderInfo();return;}
+  if(a.startsWith('exp:')){const id=a.slice(4),st=SITES[id];if(S.exped||S.money<st.cost||S.level<st.lv)return;S.money-=st.cost;const now=nowMs(),dur=st.min*60000*(S.tech.fossil?.7:1);S.exped={site:id,start:now,end:now+dur};log('Expedition team flying out to '+st.name+'. Back in '+Math.round(dur/60000)+' minutes.','good');tone('triangle',400,800,.2,.06);renderInfo();return;}
   if(a==='express'){if(S.money<2500)return;S.money-=2500;o.lvl=1;log('Express ferry service started at the harbor.','good');tone('triangle',400,800,.2,.06);}
   else if(a==='stock'){const c=600*((o.lvl||0)+1);if(S.money<c)return;S.money-=c;o.lvl=(o.lvl||0)+1;log('Gift shop restocked: '+STOCKN[o.lvl]+' range.','good');tone('triangle',400,800,.2,.06);}
   else if(a==='jeep'){if(S.money<JEEPCOST||o.jeeps>=MAXJEEPS)return;S.money-=JEEPCOST;o.jeeps++;syncVehicles();log('A new tour jeep joins the fleet.','good');tone('triangle',400,800,.2,.06);}
@@ -1786,10 +1876,10 @@ function canStepBuilder(d,nx,nz){
   if(c.type==='road')return d.escaped;
   if(c.type!=='fence')return false;
   if(c.hp<=0)return true;
-  if(!D[d.kind].carn&&!d.escaped)return false;
-  if(c.powered){if(Math.random()<.1){c.hp-=3*d.st.size;if(c.hp<=0){c.hp=0;S.dirty=true;}}return false;}
-  if(D[d.kind].carn&&Math.random()<.1*d.st.esc*(S.night?1.6:1))return true;
-  if(Math.random()<.35){c.hp-=10*d.st.size;if(c.hp<=0){c.hp=0;S.dirty=true;}}
+  if(!D[d.kind].carn&&!d.escaped){if(!c.powered&&d.comfort<30&&Math.random()<.06){c.hp-=6*d.st.size*fenceMul();if(c.hp<=0){c.hp=0;S.dirty=true;}}return false;}
+  if(c.powered){if(Math.random()<.1){c.hp-=3*d.st.size*fenceMul();if(c.hp<=0){c.hp=0;S.dirty=true;}}return false;}
+  if(D[d.kind].carn&&Math.random()<.1*d.st.esc*(S.night?1.6:1)*(d.comfort<40?1.8:1))return true;
+  if(Math.random()<.35*(d.comfort<40?1.6:1)){c.hp-=10*d.st.size*fenceMul();if(c.hp<=0){c.hp=0;S.dirty=true;}}
   return false;
 }
 function dinoStepBuilder(d,dt){
@@ -1845,7 +1935,7 @@ function updateFerries(dt){
 }
 function ferryArrive(h){
   if(S.collapsed)return;
-  const room=Math.max(0,S.vtarget-S.visitors); const n=Math.min(room,Math.round(ri(45,85)*(h.lvl?1.3:1))); h.trips=(h.trips||0)+1;
+  const room=Math.max(0,S.vtarget-S.visitors); const n=Math.min(room,Math.round(ri(45,85)*(h.lvl?1.3:1)*(S.tech.ferry?1.25:1))); h.trips=(h.trips||0)+1;
   if(n>0){S.visitors+=n;h.brought=(h.brought||0)+n; for(let i=0;i<Math.min(8,Math.ceil(n/10));i++)spawnPeepNear(h.x,h.z); log('Ferry docked with '+n+' visitors.','good');}
   else if(!S.warned.ferry){S.warned.ferry=1;log('Ferry arrived but the park cannot take more guests. Add dinosaurs visitors can see, or more attractions.','warn');}
 }
@@ -1886,11 +1976,58 @@ function computeHappy(ctx){
   parts.push(['Attractions, tours and stalls',Math.min(14,ctx.attrN*3+ctx.jeeps*2+stalls),'Open attractions, jeeps on tour and stalls all lift the mood.']);
   if(S.vcap>0&&v>S.vcap*.92)parts.push(['Overcrowding',-8,'The park is nearly full. Add capacity.']);
   if(ctx.escaped)parts.push(['Escaped animals',-Math.min(40,ctx.escaped*15),'Guests are terrified. Recapture them fast.']);
+  if(S.comfortAvg!=null){if(S.comfortAvg<50)parts.push(['Animal welfare',-6,'Guests can tell the animals are unhappy. Check their needs.']);else if(S.comfortAvg>=80)parts.push(['Animal welfare',3,'Healthy, active animals put on a great show.']);}
   if(S.statusS>=2)parts.push(['Rumours of faults',S.statusS===3?-8:-4,'Staff gossip about system strain reaches the guests.']);
   const target=clamp(parts.reduce((s,p)=>s+p[1],0),0,100);
   S.happy=clamp((S.happy==null?50:S.happy)+(target-S.happy)*.08,0,100); S.happyT=target; S.happyParts=parts;
 }
+function feederRegions(b){const rs=new Set();for(const [x,z] of b.tiles)for(const [dx,dz] of DIRS){const nx=x+dx,nz=z+dz;if(inB(nx,nz)){const r=regionId[nx][nz];if(isEnclosure(r))rs.add(r);}}return rs;}
+function computeNeeds(){
+  const R=new Map(); const get=r=>{if(!R.has(r))R.set(r,{list:[],herb:0,meat:0});return R.get(r);};
+  for(const d of dinos){if(d.kind==='compy'||d.escaped)continue;const r=regionId[d.x][d.z];if(!isEnclosure(r))continue;get(r).list.push(d);}
+  for(const b of bList){const f=B[b.type].feeder;if(!f)continue;const rs=feederRegions(b);for(const r of rs)get(r)[f]+=B[b.type].feeds/rs.size;}
+  let sum=0,n=0;
+  for(const [r,g] of R){
+    const L=g.list; if(!L.length)continue;
+    const herbN=L.filter(d=>!D[d.kind].carn).length, carnN=L.length-herbN;
+    const mins=L.map(d=>D[d.kind].minRegion*(d.traits.size?1.4:1)), mx=Math.max(...mins), need=mx+(mins.reduce((a,b)=>a+b,0)-mx)*.5;
+    const space=regionSize[r]/need, carnKinds=new Set(L.filter(d=>D[d.kind].carn).map(d=>d.kind));
+    for(const d of L){
+      const carn=D[d.kind].carn, nd=[]; let c=100;
+      const sup=carn?g.meat:g.herb, dem=carn?carnN:herbN, fed=dem?Math.min(1,sup/dem):1;
+      if(fed<1){const p=Math.round(45*(1-fed));c-=p;nd.push(['Food',-p,sup?'Not enough '+(carn?'meat':'plant')+' feeders for '+dem+' animals.':'No '+(carn?'meat':'plant')+' feeder in this paddock.']);}
+      else nd.push(['Food',0,'Well fed.']);
+      if(space<1){const p=Math.round(Math.min(35,40*(1-space)));c-=p;nd.push(['Space',-p,'The paddock has '+regionSize[r]+' tiles. This group wants about '+Math.round(need)+'.']);}
+      else nd.push(['Space',0,'Plenty of room ('+regionSize[r]+' tiles).']);
+      const [lo,hi]=SOCIAL[d.kind]||[1,4], same=L.filter(o=>o.kind===d.kind).length;
+      if(same<lo){c-=15;nd.push(['Company',-15,D[d.kind].name+' likes a group of '+lo+' or more. It has '+(same-1)+' companion'+(same===2?'':'s')+'.']);}
+      else if(same>hi){c-=15;nd.push(['Company',-15,'Too many together. '+hi+' is the most they tolerate.']);}
+      else nd.push(['Company',0,hi===1?'Happy alone.':'Good group size ('+same+').']);
+      if(!carn&&carnN){c-=35;nd.push(['Safety',-35,'Shares a paddock with predators.']);}
+      else if(carn&&[...carnKinds].some(k=>k!==d.kind)){c-=15;nd.push(['Rivals',-15,'Rival predator species in the same paddock.']);}
+      if(S.tech.condition){c+=10;nd.push(['Conditioning',10,'Lab research keeps it calm.']);}
+      c=clamp(c,0,100); d.comfortT=c; d.comfort=d.comfort==null?c:d.comfort+(c-d.comfort)*.1; d.needs=nd;
+      if(d.comfort<40&&!d.stressLog){d.stressLog=true;const worst=nd.filter(x=>x[1]<0).sort((a,b)=>a[1]-b[1])[0];log(d.name+' is stressed'+(worst?': '+worst[2].charAt(0).toLowerCase()+worst[2].slice(1):'.'),carn?'alert':'warn');}
+      if(d.comfort>55)d.stressLog=false;
+      sum+=d.comfort;n++;
+    }
+  }
+  S.comfortAvg=n?sum/n:null;
+}
+function techTick(){
+  const now=nowMs();
+  if(S.research&&now>=S.research.end){const id=S.research.id;S.tech[id]=1;S.research=null;log('Research complete: '+TECH[id].name+'. '+TECH[id].desc,'good');tone('triangle',520,1040,.4,.08);S.dirty=true;renderTools();}
+  if(S.exped&&now>=S.exped.end){const st=SITES[S.exped.site];S.exped=null;
+    const open=st.pool.filter(k=>!hasGenome(k));
+    if(!open.length){const v=Math.round(st.cost*1.4);S.money+=v;log('Expedition back from '+st.name+'. The genomes there are already complete, so the fossils were sold to a museum for '+fmt(v)+'.','good');renderTools();return;}
+    const k=pick(open);
+    const gain=Math.round(ri(28,45)*(S.tech.fossil?1.5:1)), before=S.genome[k]||0; S.genome[k]=Math.min(100,before+gain); S.expCount=(S.expCount||0)+1;
+    log('Expedition back from '+st.name+' with '+pick(FINDS)+'. '+D[k].name+' genome '+Math.floor(S.genome[k])+'%.','good');
+    if(before<100&&S.genome[k]>=100){log(D[k].name+' genome complete! You can now hatch '+D[k].name+(k==='mosa'?' in a lagoon':k==='ptero'?' in an aviary':'')+'.','good');tone('triangle',520,1040,.5,.09);}
+    renderTools();}
+}
 function econTick(){
+  techTick(); computeNeeds();
   const gens=countType('gen');
   const acc=t=>bList.filter(b=>b.type===t&&hasAccess(b));
   const foodA=acc('food').length, shopA=acc('shop').length, harbA=acc('harbor').length, hotelA=acc('hotel').length, waterA=acc('waterpark').length;
@@ -1905,12 +2042,12 @@ function econTick(){
     if(esc&&!d.escaped){d.escaped=true;d.escT=0;S.instability+=5;addF('escapes',5);log(d.name+' has escaped its paddock!',D[d.kind].carn?'alert':'warn');if(D[d.kind].carn&&peeps.length)log('Visitors are running for the ferries.','alert');roar(d.kind==='rex');}
     if(!esc&&d.escaped)d.escaped=false;
     if(d.escaped){escaped++;d.escT++;if(secs&&d.escT>35){if(recapture(d)){S.money-=300;S.recaps++;}else d.escT=20;}}
-    else if(viewable.has(r)){let h=d.st.hype;if(towers.some(t=>Math.max(Math.abs(t.x-d.x),Math.abs(t.z-d.z))<=8))h*=1.25;hype+=h;onDisplay++;}
+    else if(viewable.has(r)){let h=d.st.hype*(.4+.6*(d.comfort==null?70:d.comfort)/100);if(towers.some(t=>Math.max(Math.abs(t.x-d.x),Math.abs(t.z-d.z))<=8))h*=1.25;hype+=h;onDisplay++;}
     if(D[d.kind].carn)danger+=d.st.danger;
   }
   for(const a of avA)hype+=6+a.pteros.length*D.ptero.hype;
   for(const l of lagA)hype+=l.mosa?D.mosa.hype:4;
-  hype+=waterA*10+towers.length*4+jeeps*5;
+  hype+=waterA*10+towers.length*4+jeeps*5; if(S.tech.market)hype*=1.15;
   for(const a of listType('aviary'))danger+=a.pteros.length*.6;
   for(const l of listType('lagoon'))if(l.mosa)danger+=1;
   S.hype=hype; S.display=onDisplay;
@@ -1942,15 +2079,16 @@ function econTick(){
   stat('earned',Math.max(0,income));stat('playtime',1);stat('daysBest',S.day,'max');stat('peakBest',S.peak,'max');
   S.money+=income-upkeep; S.netRate=lerp(S.netRate||0,income-upkeep,.02);
   let changed=false;
-  for(const f of fList){if(f.hp>0){f.hp-=MAINT[S.maint].decay*rand(0,2);if(f.hp<=0){f.hp=0;changed=true;log('Fence section failed from wear. Repair it before something notices.','warn');}}}
+  for(const f of fList){if(f.hp>0){f.hp-=MAINT[S.maint].decay*rand(0,2)*fenceMul();if(f.hp<=0){f.hp=0;changed=true;log('Fence section failed from wear. Repair it before something notices.','warn');}}}
   if(changed)S.dirty=true;
-  const g={maint:Math.max(0,MAINT[S.maint].inst),fences:broken*.03,escapes:escaped*.4,power:overload?.15:0,funds:S.money<0?.1:0};
+  let stress=0;for(const d of dinos)if(!d.escaped&&d.comfort!=null&&d.comfort<50)stress+=(50-d.comfort)*.0006*(S.tech.vet?.5:1);
+  const g={stress,maint:Math.max(0,MAINT[S.maint].inst),fences:broken*.03,escapes:escaped*.4,power:overload?.15:0,funds:S.money<0?.1:0};
   let tot=-.04-secs*.03+Math.min(0,MAINT[S.maint].inst);
   for(const k in g){tot+=g[k];addF(k,g[k]);}
   S.instability=clamp(S.instability+tot,0,100);
   const k=S.instability/100;
   if(!S.collapsed&&S.day>=S.minDay&&S.instability>=22&&Math.random()<(S.instability-20)/100*.0022*(S.night?1.4:.85)){triggerCollapse();return;}
-  if(k>.1&&Math.random()<(.002+k*.05)*(S.night?2:1))incident();
+  if(k>.1&&Math.random()<(.002+k*.05)*(S.night?2:1)*(S.tech.watch?.5:1))incident();
   if(k>.3&&Math.random()<k*.004)storm();
   if(k>.25&&Math.random()<k*.004)tremor();
   S.statusT-=1; if(S.statusT<=0){S.statusT=3;const v=S.instability+rand(-6,6);S.statusS=v<20?0:v<40?1:v<62?2:3;}
@@ -1979,7 +2117,7 @@ function incident(){
 function storm(){
   log('Tropical storm hits the island. Fence lines took damage.','alert');
   rainTarget=1; setTimeout(()=>{if(S.phase==='build')rainTarget=0;},22000);
-  shuffle(fList.filter(f=>f.hp>0)).slice(0,6).forEach(f=>f.hp=Math.max(0,f.hp-45));
+  shuffle(fList.filter(f=>f.hp>0)).slice(0,6).forEach(f=>f.hp=Math.max(0,f.hp-45*fenceMul()));
   S.instability+=3; addF('weather',3); S.dirty=true;
 }
 function tremor(){
@@ -2051,13 +2189,14 @@ const WORDER=['baton','tpistol','flaregun','trifle','shotgun','rifle'];
 const RAR=['Common','Uncommon','Rare','Epic'], RCOL=['#9aa39a','#86c86f','#5aa8f0','#c07af0'];
 const CAPS={dart:[12,24,36,48],flare:[2,4,6,8],shell:[10,20,30,40],round:[12,24,36,48],food:[3,5,7,9],bandage:[4,6,8,10],medkit:[1,2,3,4],energy:[1,2,3,4]};
 const ITEMNAME={dart:'tranq darts',flare:'flare shells',shell:'shotgun shells',round:'rifle rounds',food:'food',bandage:'bandages',medkit:'medkits',energy:'energy drinks',scrap:'scrap',fuel:'fuel',
-  armor1:'Armor vest Lv1',armor2:'Armor vest Lv2',armor3:'Armor vest Lv3',pack1:'Backpack Lv1',pack2:'Backpack Lv2',pack3:'Backpack Lv3',keycard:'Contractor pilot keycard'};
+  armor1:'Armor vest Lv1',armor2:'Armor vest Lv2',armor3:'Armor vest Lv3',pack1:'Backpack Lv1',pack2:'Backpack Lv2',pack3:'Backpack Lv3',keycard:'Contractor pilot keycard',scope:'Scope',suppressor:'Suppressor',extmag:'Extended magazine'};
+const ATTS=['scope','suppressor','extmag'];
 const LOOTT=[['food',14,1,2],['bandage',12,1,2],['dart',12,3,6],['scrap',14,1,3],['fuel',8,1,1],['medkit',5,1,1],['energy',5,1,1],['shell',4,3,6],['round',3,3,6],['flare',4,1,2],
-  ['armor1',5,1,1],['pack1',5,1,1],['armor2',2,1,1],['pack2',2,1,1],['armor3',.6,1,1],['pack3',.6,1,1],['tpistol',4,1,1],['flaregun',3,1,1],['trifle',1.6,1,1],['shotgun',1.6,1,1],['rifle',.8,1,1]];
+  ['armor1',5,1,1],['pack1',5,1,1],['armor2',2,1,1],['pack2',2,1,1],['armor3',.6,1,1],['pack3',.6,1,1],['scope',1.6,1,1],['suppressor',1.6,1,1],['extmag',1.6,1,1],['tpistol',4,1,1],['flaregun',3,1,1],['trifle',1.6,1,1],['shotgun',1.6,1,1],['rifle',.8,1,1]];
 const LOOTW=LOOTT.reduce((s,r)=>s+r[1],0);
 function roll(n){const out=[];for(let i=0;i<n+(P.perks.scav?1:0);i++){let r=Math.random()*LOOTW;for(const row of LOOTT){r-=row[1];if(r<=0){out.push([row[0],ri(row[2],row[3])]);break;}}}return out;}
 const BLOOT={visitor:()=>[['tpistol',1],['dart',6],['food',1],['bandage',1],...roll(1)],gen:()=>[['fuel',2]],shop:()=>[['scrap',3],...roll(2)],food:()=>[['food',4],['energy',1],...roll(1)],
-  lab:()=>[['medkit',2],['intel','lab'],...roll(1)],sec:()=>[['trifle',1],['dart',8],['armor2',1],['intel','tracker']],harbor:()=>[['fuel',2],['scrap',1],['flaregun',1],['flare',2]],
+  lab:()=>[['medkit',2],['intel','lab'],...roll(1)],sec:()=>[['trifle',1],['dart',8],['armor2',1],['suppressor',1],['intel','tracker']],tower:()=>[['scope',1],['flare',1]],harbor:()=>[['fuel',2],['scrap',1],['flaregun',1],['flare',2]],
   hotel:()=>[['food',3],['medkit',1],['bandage',2],...roll(2)],waterpark:()=>[['scrap',2],...roll(1)],aviary:()=>[['scrap',3],...roll(1)],lagoon:()=>[['fuel',1],['scrap',2],...roll(1)],
   shed:()=>[['tpistol',1],['dart',6],['food',1],['scrap',2],...roll(1)],tour:()=>[['fuel',2],['scrap',2],...roll(1)],
   icecream:()=>[['food',2]],hotdog:()=>[['food',2]],souvenir:()=>[['scrap',1],...roll(1)],balloon:()=>[['scrap',1]]};
@@ -2074,7 +2213,8 @@ const STAFFN=['Dr. Amara Okafor','Keeper Lindiwe Dube','Mechanic Joaquín Reyes'
 const P={pos:new THREE.Vector3(),hp:100,maxHp:100,hunger:100,stamina:100,inv:{scrap:0,fuel:0,food:0,bandage:1,medkit:0,energy:0},ammo:{dart:0,flare:0,shell:0,round:0},
   weap:{baton:{mag:0}},cur:'baton',armor:0,armorDur:0,pack:0,yaw:0,pitch:.22,face:0,aiming:false,crouch:false,light:true,hidden:null,sprinting:false,moving:false,act:null,killer:null,
   survived:0,looted:0,intel:[],trackT:0,trackCd:0,towerCd:0,radioFixed:false,eta:0,heliT:-1,heliReady:false,boatFixed:false,boatGo:-1,keycard:false,stolenGo:-1,
-  kos:0,kills:0,hurtT:0,lastHit:-99,beatT:0,fireCd:0,reloadT:0,xp:0,level:1,perks:{},energyT:0,hitT:0,moveV:{x:0,z:0},spd:0,car:null,lookT:-99};
+  kos:0,kills:0,hurtT:0,lastHit:-99,beatT:0,fireCd:0,reloadT:0,xp:0,level:1,perks:{},energyT:0,hitT:0,moveV:{x:0,z:0},spd:0,car:null,lookT:-99,att:{}};
+const magOf=id=>{const m=WEAP[id].mag||0;return m>1&&P.att.extmag?Math.round(m*1.5):m;};
 let clock=1200, player=null, playerU=null, radio=null, lz=null, heli=null, boat=null, harborB=null, flare=null, padMesh=null, mercHeli=null, mercLZ=null, mercT=70, mercsIn=false;
 const crates=[], stripped=new Set(), flyers=[], mercs=[], staff=[], bodies=[], drops=[];
 const PL={type:'player',get pos(){return P.pos;}};
@@ -2190,7 +2330,7 @@ function spawnDrop(){
   const chute=new THREE.Mesh(new THREE.SphereGeometry(1.6,12,6,0,Math.PI*2,0,Math.PI/2),mat(0xe8dcc0));chute.position.y=3;m.add(chute);m.userData.chute=chute;
   m.position.set(p.x,p.y+45,p.z);lootGroup.add(m);
   const gun=pick(['rifle','shotgun','trifle']);
-  const y=[[gun,1],[WEAP[gun].ammo,10],[pick(['armor3','pack3','armor2']),1],['medkit',2],['energy',1]];
+  const y=[[gun,1],[pick(ATTS),1],[WEAP[gun].ammo,10],[pick(['armor3','pack3','armor2']),1],['medkit',2],['energy',1]];
   drops.push({pos:p,mesh:m,y,used:false,land:p.y,falling:true});
   dropBeam.visible=true;dropBeam.position.set(p.x,p.y+30,p.z);dropLight.position.set(p.x,p.y+2,p.z);
   log('Supply drop incoming inside the next circle. Look for the red beam.','good');tone('triangle',440,880,.5,.06);
@@ -2209,6 +2349,7 @@ function spawnMercs(){
     mercs.push(m);
   }
   HUM=[PL,...staff,...mercs];
+  soundCue(mercLZ,'heli',mercLZ);
   log('Rotor noise. A private recovery team has landed to strip the labs. They are armed and they shoot on sight.','alert');
   noise(4,120,.6,.3,90);
 }
@@ -2439,6 +2580,7 @@ function addItem(id,q){
   if(id.startsWith('armor')){const l=+id[5];if(l>P.armor||(l===P.armor&&P.armorDur<60)){P.armor=l;P.armorDur=100;return ITEMNAME[id];}return '';}
   if(id.startsWith('pack')){const l=+id[4];if(l>P.pack){P.pack=l;return ITEMNAME[id];}return '';}
   if(id==='keycard'){P.keycard=true;return ITEMNAME[id];}
+  if(ATTS.includes(id)){if(P.att[id])return '';P.att[id]=1;if(!S.warned['att_'+id]){S.warned['att_'+id]=1;setTimeout(()=>log({scope:'Scope fitted: aim down sights (right mouse or AIM) to zoom further and shoot straighter.',suppressor:'Suppressor fitted: your gunshots now carry about a third as far.',extmag:'Extended magazines fitted: every gun holds 50% more rounds.'}[id],'good'),600);}renderWeapons();return ITEMNAME[id];}
   if(P.ammo[id]!==undefined){const g=Math.min(q,capOf(id)-P.ammo[id]);if(g<=0)return '';P.ammo[id]+=g;return g+' '+ITEMNAME[id];}
   if(CAPS[id]){const g=Math.min(q,capOf(id)-P.inv[id]);if(g<=0)return '';P.inv[id]+=g;return g+' '+ITEMNAME[id];}
   P.inv[id]=(P.inv[id]||0)+q; return q+' '+ITEMNAME[id];
@@ -2470,10 +2612,10 @@ function renderWeapons(){
 function reload(){
   if(P.car){refuelCar();return;}
   const w=WEAP[P.cur]; if(w.melee||P.reloadT>0)return; const st=P.weap[P.cur];
-  if(st.mag>=w.mag)return; if(P.ammo[w.ammo]<=0){log('No '+ITEMNAME[w.ammo]+' left.','warn');return;}
+  if(st.mag>=magOf(P.cur))return; if(P.ammo[w.ammo]<=0){log('No '+ITEMNAME[w.ammo]+' left.','warn');return;}
   P.reloadT=w.reload*(P.perks.steady?.75:1); tone('square',200,140,.08,.03); renderWeapons();
 }
-function finishReload(){const w=WEAP[P.cur],st=P.weap[P.cur];const n=Math.min(w.mag-st.mag,P.ammo[w.ammo]);st.mag+=n;P.ammo[w.ammo]-=n;tone('square',500,700,.06,.03);renderWeapons();}
+function finishReload(){const w=WEAP[P.cur],st=P.weap[P.cur];const n=Math.min(magOf(P.cur)-st.mag,P.ammo[w.ammo]);st.mag+=n;P.ammo[w.ammo]-=n;tone('square',500,700,.06,.03);renderWeapons();}
 
 // ================= survival: shooting =================
 function aimDir(){const cp=Math.cos(P.pitch);return new THREE.Vector3(-Math.sin(P.yaw)*cp,-Math.sin(P.pitch),-Math.cos(P.yaw)*cp);}
@@ -2504,7 +2646,7 @@ function fire(){
   const st=P.weap[P.cur]; if(st.mag<=0){reload();return;}
   st.mag--; P.fireCd=w.rof; P.face=Math.atan2(Math.cos(P.yaw),-Math.sin(P.yaw));
   const dir=aimDir(), o=camera.position.clone(), mz=muzzlePos(), tMin=o.distanceTo(P.pos)*.9;
-  const spread=w.spread*(P.aiming?.4:1)*(P.moving?1.7:1)*(P.perks.steady?.6:1)*(P.crouch?.8:1);
+  const spread=w.spread*(P.aiming?(P.att.scope?.2:.4):1)*(P.moving?1.7:1)*(P.perks.steady?.6:1)*(P.crouch?.8:1);
   for(let i=0;i<(w.pellets||1);i++){
     const d=dir.clone().add(new THREE.Vector3(rand(-1,1),rand(-1,1),rand(-1,1)).multiplyScalar(spread)).normalize();
     const hit=castShot(o,d,w.range,tMin);
@@ -2513,7 +2655,7 @@ function fire(){
     if(hit.tg)applyHit(hit.tg,w); else if(hit.dist<w.range-.1)burst(hit.point,3,.5);
   }
   muzzleLight.position.copy(mz);muzzleLight.intensity=w.lethal?4:1.5;
-  shotSnd(w.snd,0); noiseAt(P.pos,w.noise);
+  const sup=P.att.suppressor&&!w.flare; shotSnd(w.snd,sup?55:0); noiseAt(P.pos,w.noise*(sup?.35:1));
   if(w.lethal)shake(.06,.08);
   if(st.mag===0&&P.ammo[w.ammo]>0)setTimeout(reload,250);
   renderWeapons();
@@ -2669,7 +2811,7 @@ function survUpdate(dt){
   else{let sx=0,sy=0;if(shakeT>0){sx=rand(-1,1)*shakeAmp;sy=rand(-1,1)*shakeAmp;}
     if(!P.camP||P.camP.distanceTo(cp)>12)P.camP=cp.clone(); else P.camP.lerp(cp,1-Math.exp(-dt*(P.car?10:20)));
     camera.position.copy(P.camP).add(new THREE.Vector3(sx,sy,0)); camera.lookAt(camera.position.clone().add(dir));}
-  const fov=P.aiming?40:62; if(Math.abs(camera.fov-fov)>.1){camera.fov=lerp(camera.fov,fov,Math.min(1,dt*12));camera.updateProjectionMatrix();}
+  const fov=P.aiming?(P.att.scope&&WEAP[P.cur].range>30?24:40):62; if(Math.abs(camera.fov-fov)>.1){camera.fov=lerp(camera.fov,fov,Math.min(1,dt*12));camera.updateProjectionMatrix();}
   CUT.uCut.value=P.hidden?0:1; CUT.uPlayer.value.copy(pivot); CUT.uCam.value.copy(camera.position);
   // lights
   placeCars(dt);
@@ -2687,6 +2829,7 @@ function survUpdate(dt){
     d.pos.y=heightAt(d.pos.x,d.pos.z);
     const dist=Math.hypot(d.pos.x-P.pos.x,d.pos.z-P.pos.z);
     if(seeable(dist,d.traits.camo)||P.trackT>0)d.seenT=clockT;
+    if(!d.dead&&d.moving&&d.running&&dist<24&&d.kind!=='compy')soundCue(d.pos,'step',d);
   }
   for(const f of flyers){const r=flyAI(f,dt,L);if(r!==null&&r<hd){hd=r;hunter=f;}}
   updateMercs(dt,L); updateStaff(dt); updateDrops(dt); updateLagoonDanger(dt);
@@ -2696,7 +2839,7 @@ function survUpdate(dt){
   P.trackT=Math.max(0,P.trackT-dt); P.trackCd=Math.max(0,P.trackCd-dt); P.towerCd=Math.max(0,P.towerCd-dt);
   if(P.act){P.act.t+=dt;if(P.act.t>=P.act.dur){const f=P.act.fn;P.act=null;f();}}
   // extraction
-  if(P.radioFixed&&P.heliT<0&&P.survived>=P.eta){P.heliT=0;log('Rotor noise. The rescue helicopter is coming in to the landing zone.','good');}
+  if(P.radioFixed&&P.heliT<0&&P.survived>=P.eta){P.heliT=0;soundCue(lz,'heli',lz);log('Rotor noise. The rescue helicopter is coming in to the landing zone.','good');}
   if(P.heliT>=0&&!P.heliReady){
     if(!heli)heli=makeHeli();
     P.heliT+=dt; const t=clamp(P.heliT/9,0,1),e=1-Math.pow(1-t,3);
@@ -2713,10 +2856,24 @@ function survUpdate(dt){
   P.hurtT=Math.max(0,P.hurtT-dt); $('hurt').style.opacity=Math.max(P.hurtT*1.6,P.hp<30?.35:0);
   if(hunter&&hd<14){P.beatT-=dt;if(P.beatT<=0){heartbeat();P.beatT=hd<7?.55:.9;}}
   hudT-=dt; if(hudT<=0){hudT=.1;updatePrompt();renderSurvHud(hunter,hd);renderWeapons();}
-  $('crosshair').className=(P.hitT>0?'hit':'')+(P.aiming?'':' wide');
+  $('crosshair').className=(P.hitT>0?'hit':'')+(P.aiming?'':' wide'); renderSonar();
   $('aC').setAttribute('aria-pressed',P.crouch?'true':'false');$('aS').setAttribute('aria-pressed',P.sprintTouch?'true':'false');$('aAim').setAttribute('aria-pressed',P.aiming?'true':'false');
 }
 let hudT=0;
+// ---------- directional sound indicator ----------
+const cues=new Map(); const CUEC={dino:'#ff5a40',gun:'#ffb040',heli:'#9fe3ec',step:'#ffd2c0'}, CUEL={dino:2.6,gun:2.2,heli:4,step:1.1};
+function soundCue(pos,kind,src){if(S.phase!=='survival')return;const d=Math.hypot(pos.x-P.pos.x,pos.z-P.pos.z);if(d>(kind==='heli'?200:70))return;const c=cues.get(src||pos);if(c&&c.kind!=='step'&&kind==='step')return;cues.set(src||pos,{pos,kind,t:clockT,src});}
+function renderSonar(){
+  const el=$('sonar'); const R=document.body.classList.contains('compact')?74:104;
+  const rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw),fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw); let i=0;
+  for(const [k,c] of cues){const age=clockT-c.t;if(age>CUEL[c.kind]||c.src&&c.src.dead){cues.delete(k);continue;}
+    const dx=c.pos.x-P.pos.x,dz=c.pos.z-P.pos.z,d=Math.hypot(dx,dz);if(d<2)continue;
+    let a=el.children[i];if(!a){a=document.createElement('i');el.appendChild(a);}
+    const deg=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz)*180/Math.PI, sc=clamp(1.5-d/50,.6,1.4);
+    a.style.setProperty('--c',CUEC[c.kind]); a.style.opacity=(1-age/CUEL[c.kind])*(c.kind==='step'?.7:1);
+    a.style.transform='rotate('+deg.toFixed(1)+'deg) translateY(-'+R+'px) scale('+sc.toFixed(2)+')'; a.hidden=false; i++;}
+  for(;i<el.children.length;i++)el.children[i].hidden=true;
+}
 function seeable(dist,camo){const L=dayLight();const r=L>.5?38:(P.light?17:9);return dist<r&&!(camo&&L<.5&&dist>6);}
 function dinoAI(d,dt,L){
   const def=D[d.kind];
@@ -2748,7 +2905,7 @@ function dinoAI(d,dt,L){
     else if(tgt){d.state='chase';d.tgt=tgt;goal=tgt.pos;speed=d.st.run;running=true;chasing=true;hunting=tgt.type==='player'?td:null;}
     else{d.state='wander';if(d.home&&d.pos.distanceTo(d.home)>10)goal=d.home;}
   }else if(def.carn){
-    if(tgt){if(d.state!=='chase'){if(d.state==='sleep')log(d.name+' woke up.','alert');d.state='chase';if(!d.traits.camo&&Math.hypot(d.pos.x-P.pos.x,d.pos.z-P.pos.z)<45){roar(d.kind==='rex');d.roarT=1;}}d.tgt=tgt;d.last=tgt.pos.clone();d.lost=0;}
+    if(tgt){if(d.state!=='chase'){if(d.state==='sleep')log(d.name+' woke up.','alert');d.state='chase';if(!d.traits.camo&&Math.hypot(d.pos.x-P.pos.x,d.pos.z-P.pos.z)<45){roar(d.kind==='rex');d.roarT=1;soundCue(d.pos,'dino',d);}}d.tgt=tgt;d.last=tgt.pos.clone();d.lost=0;}
     else if(d.state==='chase'){d.lost+=dt;if(d.lost>3){if(d.tgt===PL&&P.hidden&&d.sawHide){d.state='stalk';d.stalkT=0;}else{d.state='search';d.searchT=9;}}}
     if(!night&&d.state==='wander'&&!d.dozed&&Math.random()<.003){d.dozed=true;if(Math.random()<.5)d.state='sleep';}
     if(night){d.dozed=false;if(d.state==='sleep'&&Math.random()<.01)d.state='wander';}
@@ -2826,7 +2983,7 @@ function flyAI(f,dt,L){
     f.ang+=dt*.5; const tx=f.home.x+Math.cos(f.ang)*10,tz=f.home.z+Math.sin(f.ang)*10,ty=gy+9+Math.sin(f.ph*.1)*1.5;
     const d=new THREE.Vector3(tx-f.pos.x,ty-f.pos.y,tz-f.pos.z);const l=d.length();if(l>.1)f.pos.addScaledVector(d,Math.min(1,7*dt/l));
     if(f.cd<=0){let best=null,bd=pr;for(const h of HUM){if(!humanAlive(h)||(h===PL&&P.car))continue;const t=worldToTile(h.pos.x,h.pos.z);if(isCover(t.x,t.z))continue;const dd=Math.hypot(h.pos.x-f.pos.x,h.pos.z-f.pos.z);if(dd<bd){bd=dd;best=h;}}
-      if(best){f.state='dive';f.tgt=best;tone('sawtooth',1400,700,.5,.05);if(best===PL)log('A Pteranodon is diving at you!','alert');}}
+      if(best){f.state='dive';f.tgt=best;soundCue(f.pos,'dino',f);tone('sawtooth',1400,700,.5,.05);if(best===PL)log('A Pteranodon is diving at you!','alert');}}
     f.mesh.rotation.y=Math.atan2(-(d.z),d.x);flap(f.mesh,f.ph,.6);
   }else if(f.state==='dive'){
     const tp=f.tgt.pos.clone().add(new THREE.Vector3(0,1,0));const d=tp.clone().sub(f.pos);const l=d.length();
@@ -2886,7 +3043,7 @@ function updateMercs(dt,L){
         let acc=clamp(.52-dist*.008,.1,.52);
         if(aimEnt===PL){if(P.moving)acc-=.12;if(P.crouch)acc-=.1;const pt=playerTile();if(isCover(pt.x,pt.z))acc-=.18;if(P.sprinting)acc-=.08;acc=Math.max(.06,acc);}
         const hit=Math.random()<acc; const to=aimAt.clone().add(new THREE.Vector3(hit?0:rand(-1.5,1.5),1+(hit?0:rand(-.5,1)),hit?0:rand(-1.5,1.5)));
-        tracer(from,to,0xffd08a); muzzleLight.position.copy(from); muzzleLight.intensity=Math.max(muzzleLight.intensity,3);
+        soundCue(m.pos,'gun',m); tracer(from,to,0xffd08a); muzzleLight.position.copy(from); muzzleLight.intensity=Math.max(muzzleLight.intensity,3);
         shotSnd('rifle',m.pos.distanceTo(P.pos)); noiseAt(m.pos,40);
         if(hit){if(aimEnt.type){hurtEnt(aimEnt,aimEnt===PL?10:16,m);if(aimEnt===PL&&clockT-(P.hitLogT||-9)>4){P.hitLogT=clockT;log('You are taking fire!','alert');}}
           else if(aimEnt.kind){aimEnt.hp-=20;aimEnt.state=aimEnt.state==='tranq'?'tranq':'chase';aimEnt.tgt=m;aimEnt.last=m.pos.clone();if(aimEnt.hp<=0){aimEnt.dead=true;aimEnt.state='dead';aimEnt.sleep=1;}}
@@ -3044,7 +3201,7 @@ function renderSurvHud(hunter,hd){
   $('huN').textContent=Math.ceil(P.hunger); $('huB').style.width=P.hunger+'%';
   $('stN').textContent=P.energyT>0?'∞':Math.ceil(P.stamina); $('stB').style.width=P.stamina+'%';
   for(const k of ['scrap','fuel','food','bandage','medkit','energy'])$('i'+k[0].toUpperCase()+k.slice(1)).textContent=P.inv[k];
-  const gear='<span class="'+(P.armor?'on':'')+'">Armor '+(P.armor?'Lv'+P.armor:'none')+'</span><span class="'+(P.pack?'on':'')+'">Pack '+(P.pack?'Lv'+P.pack:'none')+'</span>'+(P.keycard?'<span class="on">Keycard</span>':'')+'<span>'+P.kos+' KO · '+P.kills+' kills</span>';
+  const gear='<span class="'+(P.armor?'on':'')+'">Armor '+(P.armor?'Lv'+P.armor:'none')+'</span><span class="'+(P.pack?'on':'')+'">Pack '+(P.pack?'Lv'+P.pack:'none')+'</span>'+(P.keycard?'<span class="on">Keycard</span>':'')+ATTS.filter(a=>P.att[a]).map(a=>'<span class="on">'+ITEMNAME[a]+'</span>').join('')+'<span>'+P.kos+' KO · '+P.kills+' kills</span>';
   if($('gear').innerHTML!==gear)$('gear').innerHTML=gear;
   const pt=playerTile(); const cover=isCover(pt.x,pt.z);
   const sv=P.car?'driving the '+P.car.name+' (loud)':P.hidden?'indoors':(P.crouch?'crouching':P.sprinting?'sprinting (loud)':'standing')+(cover?' in jungle cover':' in the open')+(night&&!P.light?', light off':'');
@@ -3142,6 +3299,7 @@ function drawMinimap(){
 mm.addEventListener('pointerdown',e=>{if(S.phase!=='build')return;const r=mm.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*N,z=(e.clientY-r.top)/r.height*N;cam.tx=(x-N/2)*T;cam.tz=(z-N/2)*T;});
 
 // ================= builder HUD =================
+function fmtLeft(end){const s=Math.max(0,Math.ceil((end-nowMs())/1000));const m=Math.floor(s/60);return m>=60?Math.floor(m/60)+'h '+(m%60)+'m':m+':'+String(s%60).padStart(2,'0');}
 function renderBuilderHud(){
   $('money').textContent=fmt(S.money); $('money').style.color=S.money<0?'var(--alert)':'';
   $('visitors').textContent=S.visitors.toLocaleString('en-US'); const hp=Math.round(S.happy); $('happy').textContent=hp+'%'; $('happy').dataset.h=hp<40?'low':hp<65?'mid':'hi'; $('day').textContent=S.day+' · '+fmtClock(bTod())+(S.night?' ☾':' ☀');
@@ -3154,12 +3312,15 @@ function renderBuilderHud(){
   const fl=listType('aviary').reduce((s,a)=>s+a.pteros.length,0)+listType('lagoon').filter(l=>l.mosa).length;
   $('dinoInfo').textContent=(dinos.length+fl)+(dinos.length?' · '+S.display+' on show':'')+(loose?' · '+loose+' loose':'');
   $('capInfo').textContent=S.vcap.toLocaleString('en-US');
+  const ca=S.comfortAvg; $('comfInfo').textContent=ca==null?'—':Math.round(ca)+'%'; $('comfInfo').style.color=ca==null?'':ca<40?'var(--alert)':ca<60?'var(--amber)':'';
+  $('rowRes').hidden=!S.research; if(S.research)$('resInfo').textContent=TECH[S.research.id].name.split(' ')[0]+' · '+fmtLeft(S.research.end);
+  $('rowExp').hidden=!S.exped; if(S.exped)$('expInfo').textContent=SITES[S.exped.site].short+' · '+fmtLeft(S.exped.end);
   const sp=Math.round(S.instability);$('strainInfo').textContent=sp+'%';$('strainB').style.width=sp+'%';$('strainB').style.background=sp>=62?'var(--alert)':sp>=35?'var(--amber)':'var(--leaf)';
   $('hypeInfo').textContent=Math.round(S.hype);
   $('nextInfo').textContent=S.level>=5?'Max rating':'peak '+S.peak+' / '+LEVELS[S.level];
   $('maintCost').textContent=fmt(fList.length*MAINT[S.maint].cost*60)+'/min';
   const items=[['Build the Visitor Centre',countType('visitor')>0],['Lay a road from it',roadConn.size>0],['Build a generator',countType('gen')>0],
-    ['Fence a closed paddock',regionPublic.some((p,i)=>!p&&regionSize[i]>=8)],['Hatch a dinosaur visitors can see',S.display>0],['Reach ★★ ('+LEVELS[1]+' visitors)',S.level>=2],
+    ['Fence a closed paddock',regionPublic.some((p,i)=>!p&&regionSize[i]>=8)],['Hatch a dinosaur visitors can see',S.display>0],['Put a feeder in a paddock',bList.some(b=>isFeeder(b.type))],['Reach ★★ ('+LEVELS[1]+' visitors)',S.level>=2],
     ['Open a harbor for ferries',listType('harbor').some(hasAccess)],['Decorate the Visitor Centre plaza',(S.happyParts||[]).some(p=>p[0]==='Scenery and decorations'&&p[1]>=5)],['Open an attraction',bList.some(b=>B[b.type].attr&&hasAccess(b))],['Reach ★★★★★',S.level>=5]];
   const html=items.map(([t,d])=>'<div class="'+(d?'done':'')+'">'+t+'</div>').join('');
   if($('checklist').innerHTML!==html)$('checklist').innerHTML=html;
@@ -3376,8 +3537,8 @@ function openBrief(first){
     :['Click the game to take the mouse · Esc frees it','Mouse: look · left click: fire · right mouse: aim','WASD: move · Shift: sprint · C: crouch','E: search, repair, open · X: hide inside','R: reload · 1–6: weapons','H: heal · F: eat · V: energy drink · G: hand flare','L: flashlight · M: big map'];
   $('briefBody').innerHTML='<section><h3>Get off the island</h3><ul>'+ways.join('')+'</ul></section>'
    +'<section><h3>The ash cloud</h3><p>Monte Ceniza is erupting. The safe zone is the white circle on your map and it shrinks in stages. Outside it you take damage that grows every stage. Supply drops with the best gear fall inside the next circle.</p></section>'
-   +'<section><h3>Stay alive</h3><ul><li>Search buildings and crates for food, medicine, ammo, armor and backpacks.</li><li>Hide inside a building to rest, heal and drop out of sight.</li><li>Crouch in jungle to be hard to spot. Turn your light off at night.</li><li>Sprinting and gunshots draw attention. Watch hunger and stamina.</li></ul></section>'
-   +'<section><h3>Fight or sneak</h3><ul><li>Tranquilizer weapons knock animals and people out for a while.</li><li>Shotguns and rifles are rare and lethal, but very loud.</li><li>Gear comes in Common, Uncommon, Rare and Epic. Armor soaks damage, backpacks carry more.</li><li>Live fences still shock predators. Restart a generator with fuel to power them.</li></ul></section>'
+   +'<section><h3>Stay alive</h3><ul><li>Search buildings and crates for food, medicine, ammo, armor and backpacks.</li><li>Hide inside a building to rest, heal and drop out of sight.</li><li>Crouch in jungle to be hard to spot. Turn your light off at night.</li><li>Sprinting and gunshots draw attention. Watch hunger and stamina.</li><li>Arrows around the crosshair point to nearby sounds: red for roars, orange for gunfire, pale for footsteps.</li></ul></section>'
+   +'<section><h3>Fight or sneak</h3><ul><li>Tranquilizer weapons knock animals and people out for a while.</li><li>Shotguns and rifles are rare and lethal, but very loud.</li><li>Gear comes in Common, Uncommon, Rare and Epic. Armor soaks damage, backpacks carry more.</li><li>Attachments fit every gun you carry: a scope zooms further, a suppressor makes shots much quieter, extended magazines hold 50% more.</li><li>Park vehicles still run. Get in with E, but engines are loud.</li><li>Live fences still shock predators. Restart a generator with fuel to power them.</li></ul></section>'
    +'<section><h3>Grow stronger</h3><p>Earn XP for searching, rescuing stranded staff, finding intel and taking down threats. Every level lets you pick a perk. Staff who escape with you earn a big bonus.</p></section>'
    +'<section><h3>Controls</h3><ul>'+ctl.map(c=>'<li>'+c+'</li>').join('')+'</ul></section>';
   $('briefGo').textContent=first?'I\'m ready':'Back to it';
@@ -3396,7 +3557,7 @@ function serialize(){
   const Bs=bList.filter(b=>b.type!=='shed').map(b=>{const ex={};if(b.lvl)ex.l=b.lvl;if(b.type==='tour'){ex.j=b.jeeps;ex.t=b.tours||0;}if(b.trips){ex.tr=b.trips;ex.br=b.brought;}if(b.sales){ex.s=Math.round(b.sales);ex.r=Math.round(b.rev);}
     const row=[b.type,b.x,b.z,b.pteros?b.pteros.length:0,b.mosa?1:0];if(Object.keys(ex).length)row.push(ex);return row;});
   const Ds=dinos.filter(d=>d.kind!=='compy').map(d=>[d.kind,d.traits,d.hybrid?1:0,d.name,d.x,d.z,d.homeX,d.homeZ]);
-  const st={};for(const k of ['money','day','visitors','peak','maint','level','instability','f','hybridCount','pendingHybrid','warned','founded','netRate','happy','recaps'])st[k]=S[k];
+  const st={};for(const k of ['money','day','visitors','peak','maint','level','instability','f','hybridCount','pendingHybrid','warned','founded','netRate','happy','recaps','genome','tech','research','exped','expCount'])st[k]=S[k];
   return {v:1,seed:SEED,at:Date.now(),s:st,cl:[...clearedSet],roads,F,B:Bs,D:Ds,cam:{tx:cam.tx,tz:cam.tz,yaw:cam.yaw,dist:cam.dist}};
 }
 function clearPark(){
@@ -3415,7 +3576,10 @@ function applySave(o){
     for(let i=0;i<np;i++){const m=makePtero();scene.add(m);b.pteros.push({mesh:m,ang:rand(0,6),r:rand(1,2.2),h:rand(1.4,2.4),ph:rand(0,6)});}
     if(mo){const m=makeMosa();scene.add(m);b.mosa={mesh:m,t:0,next:rand(2,5),jump:-1};}}
   for(const [k,tr,h,n,x,z,hx,hz] of o.D){const d=spawnDino(k,tr||{},!!h,n,x,z);d.homeX=hx;d.homeZ=hz;}
-  Object.assign(S,o.s); S.collapsed=false; S.order++; S.dirty=true; S.minDay=15; S.lastTod=null;
+  S.genome=Object.assign({},START_GENOMES); S.tech={}; S.research=null; S.exped=null;
+  Object.assign(S,o.s); S.collapsed=false;
+  if(!o.s.genome){for(const d of dinos)S.genome[d.kind]=100;for(const b of bList){if(b.pteros&&b.pteros.length)S.genome.ptero=100;if(b.mosa)S.genome.mosa=100;}}
+  if(!S.tech)S.tech={}; S.order++; S.dirty=true; S.minDay=15; S.lastTod=null;
   if(!S.founded)S.founded=o.at-(S.day-1)*86400000;
   const away=Math.max(0,(Date.now()-o.at)/1000), cap=Math.min(away,8*3600);
   if(away>120){const earned=Math.max(0,S.netRate||0)*cap*.5;S.money+=earned;S.instability=Math.max(0,S.instability-.04*away);S.visitors=0;
@@ -3484,7 +3648,7 @@ $('sSens').oninput=e=>{SET.sens=+e.target.value;saveSettings();};
 renderProfChip();
 window.__eden={PROF,openBrief,warp:h=>{S.warp=(S.warp||0)+h*3600000;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
-  cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
+  techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
 refreshWorld();
 requestAnimationFrame(loop);
