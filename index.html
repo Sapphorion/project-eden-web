@@ -675,6 +675,10 @@ const bSize=t=>(B[t]&&B[t].size)||1;
 function footprint(t,x,z){const s=bSize(t),o=s===3?-1:0,out=[];for(let i=0;i<s;i++)for(let j=0;j<s;j++)out.push([x+o+i,z+o+j]);return out;}
 const D={
   galli:{name:'Gallimimus',cost:600,carn:false,hype:4,danger:0,speed:2.2,run:6,size:.95,col:0xc7b07a,col2:0x7f6a43,col3:0xe6d7b0,minRegion:8,detect:7,dmg:0},
+  para:{name:'Parasaurolophus',cost:700,carn:false,hype:5,danger:0,speed:1.8,run:5.4,size:1.0,col:0x8a9a6a,col2:0xb0552e,col3:0xd8d2b0,minRegion:10,detect:7,dmg:0},
+  stego:{name:'Stegosaurus',cost:1100,carn:false,hype:8,danger:1,speed:1.1,run:3.8,size:1.05,col:0x7a8a5a,col2:0xc06a3a,col3:0xb8b890,minRegion:14,detect:4.5,dmg:22},
+  brachio:{name:'Brachiosaurus',cost:3000,carn:false,hype:17,danger:0,speed:1.0,run:2.4,size:1.3,col:0x8a8f86,col2:0x5f665c,col3:0xc0c2b4,minRegion:24,detect:3,dmg:0},
+  dilo:{name:'Dilophosaurus',cost:1500,carn:true,hype:11,danger:2,speed:2.2,run:5.8,size:.9,col:0x8a8a3a,col2:0xd0482a,col3:0xd8c890,minRegion:12,detect:12,dmg:11,breakRate:28},
   trike:{name:'Triceratops',cost:1300,carn:false,hype:9,danger:1,speed:1.3,run:4.6,size:1.1,col:0x76885f,col2:0x4a573c,col3:0xa6b08a,minRegion:12,detect:4.5,dmg:18},
   raptor:{name:'Velociraptor',cost:1900,carn:true,hype:14,danger:3,speed:2.4,run:6.3,size:.85,col:0x9b6a43,col2:0x553621,col3:0xc9a27a,minRegion:12,detect:14,dmg:12,breakRate:22},
   rex:{name:'Tyrannosaurus',cost:4200,carn:true,hype:26,danger:5,speed:1.6,run:5.4,size:1.25,col:0x6a5a46,col2:0x382e24,col3:0x9a8a70,minRegion:20,detect:13,dmg:34,breakRate:70},
@@ -682,8 +686,8 @@ const D={
   ptero:{name:'Pteranodon',cost:1500,carn:true,special:'aviary',hype:9},
   mosa:{name:'Mosasaurus',cost:6000,carn:true,special:'lagoon',hype:34},
 };
-const UNLOCK={tour:2,fountain:2,statue:2,raptor:2,harbor:2,sec:2,waterpark:2,tower:2,lab:3,aviary:3,ptero:3,hotel:3,hybrid:3,rex:4,lagoon:4,mosa:4};
-const LEVELS=[0,150,400,800,1400];
+const UNLOCK={raptor:2,dilo:2,brachio:2,sec:2,waterpark:2,lab:3,aviary:3,ptero:3,hotel:3,hybrid:3,rex:4,lagoon:4,mosa:4};
+const LEVELS=[0,100,300,650,1200];
 const TRAITWARN={size:'tears through fences fast and takes far more punishment',speed:'can outrun you, do not race it',nv:'sees you from far away in the dark',camo:'is nearly invisible at night and hunts without a sound, watch for the eyes',intel:'can open doors, so hiding indoors will not stop it'};
 const MAINT={low:{cost:.02,decay:.25,inst:.06},standard:{cost:.06,decay:0,inst:0},high:{cost:.14,decay:0,inst:-.05}};
 function dStats(kind,tr){
@@ -698,7 +702,7 @@ function dStats(kind,tr){
 }
 
 // ================= state =================
-const S={phase:'intro',money:25000,day:1,dayT:0,visitors:0,peak:0,hype:0,maint:'standard',level:1,
+const S={phase:'intro',money:30000,day:1,dayT:0,visitors:0,peak:0,hype:0,maint:'standard',level:1,
   instability:0,minDay:15,founded:0,warp:0,netRate:0,doomDay:ri(12,22),statusS:0,statusT:0,collapsed:false,order:0,dirty:true,paused:false,
   pendingHybrid:null,hybridCount:0,cap:0,draw:0,vcap:0,vtarget:0,display:0,f:{},cause:'',causeKey:'',collapseDay:0,warned:{},happy:50,happyParts:[],recaps:0};
 const cells=[...Array(N)].map(()=>Array(N).fill(null));
@@ -1058,10 +1062,16 @@ function makeVehicle(kind){
   g.userData.head=hm; g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
   return g;
 }
+const QUAD={
+  stego:{bl:1.9,bh:.9,bw:1.0,leg:.7,nk:.45,nkA:-.35,hl:.5,hh:.3,hw:.32,tl:[.8,.7,.6],tt:[.45,.3,.18]},
+  brachio:{bl:2.2,bh:1.1,bw:1.1,leg:1.35,nk:2.5,nkA:1.15,hl:.55,hh:.3,hw:.32,tl:[1.0,.9,.8],tt:[.5,.32,.18]},
+};
 const BIPED={
   raptor:{bl:1.15,bh:.5,bw:.44,l1:.5,l2:.48,nk:.35,nkA:.5,hl:.55,hh:.28,hw:.26,tl:[.65,.55,.5],tt:[.28,.2,.12],arm:.32},
   rex:{bl:1.6,bh:.9,bw:.78,l1:.72,l2:.62,nk:.3,nkA:.3,hl:1.0,hh:.55,hw:.5,tl:[.95,.8,.7],tt:[.55,.38,.22],arm:.2},
   galli:{bl:.85,bh:.4,bw:.36,l1:.6,l2:.58,nk:.75,nkA:1.0,hl:.34,hh:.17,hw:.15,tl:[.6,.5,.45],tt:[.22,.15,.09],arm:.25},
+  para:{bl:1.15,bh:.58,bw:.52,l1:.62,l2:.56,nk:.5,nkA:.75,hl:.5,hh:.22,hw:.2,tl:[.75,.6,.5],tt:[.32,.22,.12],arm:.3},
+  dilo:{bl:1.0,bh:.45,bw:.4,l1:.55,l2:.5,nk:.45,nkA:.6,hl:.5,hh:.24,hw:.22,tl:[.7,.6,.5],tt:[.26,.18,.1],arm:.3},
   compy:{bl:1.0,bh:.45,bw:.38,l1:.45,l2:.45,nk:.4,nkA:.6,hl:.42,hh:.24,hw:.22,tl:[.6,.55,.5],tt:[.24,.17,.1],arm:.3},
 };
 function dbox(w,h,d,m,x,y,z){const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);me.position.set(x||0,y||0,z||0);me.castShadow=true;return me;}
@@ -1085,6 +1095,19 @@ function makeDinoMesh(kind,tr,hybrid){
     let parent=body,px=-.85;for(let i=0;i<2;i++){const s=grp(px,i?0:.05,0);parent.add(s);s.add(dbox(.7,.32-i*.12,.32-i*.12,m1,-.35,0,0));s.rotation.z=.15;tail.push(s);parent=s;px=-.7;}
     const lp=[[.55,.4,0],[.55,-.4,Math.PI],[-.55,.4,Math.PI],[-.55,-.4,0]];
     for(const [x,z,q] of lp){const h=grp(x,-.2,z);body.add(h);h.add(dbox(.28,.78,.28,m2,0,-.39,0));legs.push({hip:h,knee:null,q});}
+  }else if(QUAD[kind]){
+    const q=QUAD[kind]; baseY=q.leg+q.bh*.1; body=grp(0,baseY,0); root.add(body);
+    body.add(dbox(q.bl,q.bh,q.bw,m1,0,q.bh*.2,0)); body.add(dbox(q.bl*.85,q.bh*.25,q.bw*.85,m3,0,-q.bh*.15,0));
+    const neck=grp(q.bl*.46,q.bh*.3,0); neck.rotation.z=q.nkA; body.add(neck); neck.add(dbox(q.nk,q.bh*.38,q.bw*.34,m1,q.nk/2,0,0));
+    head=grp(q.nk,0,0); head.rotation.z=-q.nkA; neck.add(head); head.add(dbox(q.hl,q.hh,q.hw,m1,q.hl*.4,0,0));
+    jaw=grp(0,-q.hh*.3,0); head.add(jaw); jaw.add(dbox(q.hl*.8,q.hh*.3,q.hw*.85,m3,q.hl*.42,0,0));
+    eye(head,q.hl*.55,q.hh*.2,q.hw*.5,.045); eye(head,q.hl*.55,q.hh*.2,-q.hw*.5,.045);
+    let parent=body,px=-q.bl*.45,py=q.bh*.15;
+    for(let i=0;i<3;i++){const sg=grp(px,py,0);parent.add(sg);sg.add(dbox(q.tl[i],q.tt[i],q.tt[i]*1.05,m1,-q.tl[i]/2,0,0));sg.rotation.z=i===0?-.12:-.05;tail.push(sg);parent=sg;px=-q.tl[i]*.95;py=0;
+      if(kind==='stego'&&i===2)for(const [a,z] of [[.3,.12],[.3,-.12],[-.5,.1],[-.5,-.1]]){const sp=new THREE.Mesh(new THREE.ConeGeometry(.05,.45,5),mat(0xe8e0c8));sp.position.set(-q.tl[i]*.8,.12,z*1.6);sp.rotation.x=z>0?-a-.6:a+.6;sg.add(sp);}}
+    if(kind==='stego')for(let i=0;i<7;i++){const h=.32+Math.sin(i/6*Math.PI)*.28;const pl=dbox(.34,h,.05,m2,-q.bl*.42+i*q.bl*.13,q.bh*.7+h/2-.05,i%2?.09:-.09);pl.rotation.z=.25;body.add(pl);}
+    for(const [x,z,ph] of [[q.bl*.36,q.bw*.38,0],[q.bl*.36,-q.bw*.38,Math.PI],[-q.bl*.36,q.bw*.38,Math.PI],[-q.bl*.36,-q.bw*.38,0]]){
+      const h=grp(x,-q.bh*.1,z);body.add(h);h.add(dbox(q.bw*.3,q.leg,q.bw*.3,m2,0,-q.leg/2,0));legs.push({hip:h,knee:null,q:ph});}
   }else{
     const p=BIPED[kind]; baseY=p.l1+p.l2;
     body=grp(0,baseY,0); root.add(body);
@@ -1096,7 +1119,9 @@ function makeDinoMesh(kind,tr,hybrid){
     head=grp(p.nk,0,0); head.rotation.z=-p.nkA; neck.add(head);
     head.add(dbox(p.hl,p.hh,p.hw,m1,p.hl*.4,p.hh*.15,0));
     jaw=grp(0,-p.hh*.2,0); head.add(jaw); jaw.add(dbox(p.hl*.85,p.hh*.3,p.hw*.85,m3,p.hl*.42,-p.hh*.1,0));
-    if(kind==='rex'||kind==='raptor'){for(let k=0;k<4;k++)jaw.add(dbox(.03,.06,p.hw*.9,mat(0xeee8d8),p.hl*(.3+k*.15),p.hh*.02,0));}
+    if(kind==='para'){const cr=dbox(.75,.11,.09,m2,-.15,p.hh*.9,0);cr.rotation.z=.45;head.add(cr);}
+    if(kind==='dilo'){for(const z of[-.06,.06]){const cr=dbox(.42,.2,.02,m2,p.hl*.3,p.hh*.65,z);cr.rotation.z=-.15;head.add(cr);}}
+    if(kind==='rex'||kind==='raptor'||kind==='dilo'){for(let k=0;k<4;k++)jaw.add(dbox(.03,.06,p.hw*.9,mat(0xeee8d8),p.hl*(.3+k*.15),p.hh*.02,0));}
     const er=Math.max(.035,p.hh*.15);
     eye(head,p.hl*.55,p.hh*.32,p.hw*.5,er);eye(head,p.hl*.55,p.hh*.32,-p.hw*.5,er);
     let parent=body,px=-p.bl*.38,py=p.bh*.15;
@@ -1373,7 +1398,7 @@ function removeCell(x,z){
   else{bldGroup.remove(c.mesh);bList.splice(bList.indexOf(c),1);if(c.ship)scene.remove(c.ship.mesh);if(infoB===c)closeInfo();if(c.pteros)c.pteros.forEach(p=>scene.remove(p.mesh));if(c.mosa)scene.remove(c.mosa.mesh);for(const [a,cc] of c.tiles)cells[a][cc]=null;}
   S.order++;
 }
-const STRAIN={gen:1,visitor:1,harbor:2,food:.5,shop:.5,hotel:2,sec:0,lab:4,waterpark:2,tower:.5,aviary:5,lagoon:6,tour:1,galli:1,trike:3,raptor:8,rex:14,ptero:4,mosa:10};
+const STRAIN={gen:1,visitor:1,harbor:2,food:.5,shop:.5,hotel:2,sec:0,lab:4,waterpark:2,tower:.5,aviary:5,lagoon:6,tour:1,galli:1,para:1,stego:2,trike:3,brachio:4,dilo:6,raptor:8,rex:14,ptero:4,mosa:10};
 function addStrain(v){if(v<=0)return;const before=S.instability;S.instability=clamp(S.instability+v,0,100);
   if(before<35&&S.instability>=35)log('Park systems are under strain from all the new construction. Give it time, build a Security Office or raise maintenance.','warn');
   if(before<65&&S.instability>=65)log('Engineers warn the park is badly overstretched. Something could give at night.','alert');}
@@ -1435,7 +1460,8 @@ function commitDrag(){
   S.order++; S.dirty=true; tone('triangle',300,420,.08,.05); if(p.kind==='fence')addStrain(p.list.length*.03);
 }
 let dinoId=0;
-const HPMAX={galli:60,trike:320,raptor:110,rex:650,compy:10};
+const HPMAX={galli:60,para:90,stego:300,brachio:900,dilo:100,trike:320,raptor:110,rex:650,compy:10};
+const CHARGE=new Set(['trike','stego']), HEAVY=new Set(['rex','trike','stego','brachio']);
 function spawnDino(kind,tr,hybrid,name,x,z){
   const st=dStats(kind,tr); const mesh=makeDinoMesh(kind,tr,hybrid); mesh.scale.setScalar(st.size);
   const d={id:dinoId++,kind,traits:tr,hybrid,name,st,mesh,x,z,homeX:x,homeZ:z,pos:tileCenter(x,z),target:null,wait:rand(0,2),lastDir:[1,0],escaped:false,escT:0,
@@ -1454,10 +1480,11 @@ function ghostSet(list){let n=0;for(const [x,z,c] of list){if(n>=900||!inB(x,z))
 
 // ================= tools UI =================
 const TABS={build:['paddock','fence','road','gen','visitor','harbor','food','shop','sec','lab','bulldoze'],attr:['tour','waterpark','tower','hotel','aviary','lagoon'],
-  decor:['plaza','bench','lamp','flowers','hedge','bin','picnic','icecream','hotdog','balloon','souvenir','fountain','statue','bulldoze'],dinos:['galli','trike','raptor','rex','ptero','mosa','hybrid'],ops:['repair','tranq','bulldoze']};
+  decor:['plaza','bench','lamp','flowers','hedge','bin','picnic','icecream','hotdog','balloon','souvenir','fountain','statue','bulldoze'],dinos:['galli','para','stego','trike','raptor','dilo','brachio','rex','ptero','mosa','hybrid'],ops:['repair','tranq','bulldoze']};
 const TOOLNAME={bulldoze:'Demolish',repair:'Repair fence',tranq:'Tranquilize',hybrid:'Hybrid'};
 const TOOLDESC={bulldoze:'Remove a structure (50% refund), sell a dinosaur or clear jungle ($30). Click or drag.',repair:'Restore a damaged fence section. Click or drag.',tranq:'Send a team to return an escaped dinosaur to its paddock. $500.',
-  galli:'Fast, skittish herbivore. Low hype, harmless.',trike:'Huge herbivore. Charges anyone who gets close.',raptor:'Pack hunter. Tests fences constantly.',rex:'The headline act. Smashes through anything unpowered.',
+  galli:'Fast, skittish herbivore. Low hype, harmless.',para:'Gentle herd animal with a honking crest. Cheap crowd-pleaser.',stego:'Armoured plant-eater. Swings its spiked tail at anyone too close.',
+  brachio:'Gentle giant. Guests can see it from across the island. Needs a big paddock.',dilo:'Small, frilled predator. Spits and screeches. Tests fences.',trike:'Huge herbivore. Charges anyone who gets close.',raptor:'Pack hunter. Tests fences constantly.',rex:'The headline act. Smashes through anything unpowered.',
   ptero:'Click an Aviary to release one. Up to 6 per aviary.',mosa:'Click a Mosasaurus Lagoon to add one. Huge hype.',hybrid:'Open the Research Lab to design a spliced specimen.'};
 const DRAG=new Set(['paddock','fence','road']), PAINT=new Set(['bulldoze','repair','hedge','flowers','lamp','bench','bin']);
 const toolName=t=>B[t]?B[t].name:D[t]?D[t].name:TOOLNAME[t];
@@ -1526,7 +1553,7 @@ $('spliceBtn').onclick=()=>{
 
 // ---------- building & dinosaur info panels ----------
 let infoB=null, infoTab='', infoCache={}, infoConfirm='';
-const MERCH={galli:['Gallimimus running cap',18],trike:['Triceratops horn headband',15],raptor:['Raptor claw keyring',12],rex:['T. rex plush',35],ptero:['Pteranodon kite',22],mosa:['Mosasaurus snow globe',28]};
+const MERCH={galli:['Gallimimus running cap',18],trike:['Triceratops horn headband',15],raptor:['Raptor claw keyring',12],rex:['T. rex plush',35],ptero:['Pteranodon kite',22],para:['Parasaurolophus crest whistle',14],stego:['Stegosaurus plate pillow',20],dilo:['Dilophosaurus frill hat',16],brachio:['Brachiosaurus giant plush',45],mosa:['Mosasaurus snow globe',28]};
 const STOCKN=['Basic','Better','Premium','Flagship'];
 function openInfo(o){infoB=o;infoTab='';infoCache={};infoConfirm='';$('infoMsg').textContent='';renderInfo();$('infoO').hidden=false;$('infoO').firstElementChild.scrollTop=0;tone('triangle',520,700,.06,.03);}
 function closeInfo(){if($('infoO').hidden&&!infoB)return;$('infoO').hidden=true;infoB=null;}
@@ -1554,7 +1581,7 @@ function renderInfo(){
     if(!dinos.includes(o)){closeInfo();return;}
     const [st,c]=dinoStatus(o), tr=traitText(o.traits), def=D[o.kind];
     k=(o.hybrid?'Hybrid specimen':'Dinosaur')+' · '+def.name; h=escH(o.name);
-    body=kvH([['Status',st,c],['Species',def.name],['Hype',Math.round(o.st.hype)],['Temperament',def.carn?'Predator':o.kind==='trike'?'Defensive':'Docile',def.carn?'neg':''],['Danger',['None','Low','Moderate','High','Severe','Extreme'][Math.min(5,Math.round(o.st.danger))]],['Health',Math.round(o.hp)]])
+    body=kvH([['Status',st,c],['Species',def.name],['Hype',Math.round(o.st.hype)],['Temperament',def.carn?'Predator':CHARGE.has(o.kind)?'Defensive':'Docile',def.carn?'neg':''],['Danger',['None','Low','Moderate','High','Severe','Extreme'][Math.min(5,Math.round(o.st.danger))]],['Health',Math.round(o.hp)]])
       +'<p class="ipara">'+(TOOLDESC[o.kind]||'')+(tr?' Spliced traits: '+tr+'.':'')+'</p>';
     btns=btnH('sell',infoConfirm==='sell'?'Click again to sell':'Sell to another park ('+fmt(Math.round((o.hybrid?2500:def.cost)*.3))+')',false)+btnH('close','Close',true);
   }else{
@@ -1894,10 +1921,10 @@ function econTick(){
   computeHappy({foodA,escaped,jeeps,roads,attrN:waterA+towers.length+avA.length+lagA.length+tours.length});
   const hm=.7+.6*S.happy/100;
   S.vtarget=Math.round(Math.min(hype*18*hm,S.vcap)*ratingMul);
-  if(S.night)S.vtarget=Math.min(S.vtarget,hotelA*150+20);
-  const base=Math.min(S.vtarget,40);
-  if(S.visitors<base)S.visitors=Math.min(base,S.visitors+2);
-  else if(S.visitors>S.vtarget)S.visitors=Math.max(S.vtarget,S.visitors-Math.max(1,Math.ceil(S.visitors*(S.night?.12:.04))));
+  if(S.night)S.vtarget=Math.min(S.vtarget,hotelA*150+Math.round(S.vtarget*.5));
+  const base=Math.min(S.vtarget,120);
+  if(S.visitors<base)S.visitors=Math.min(base,S.visitors+3);
+  else if(S.visitors>S.vtarget)S.visitors=Math.max(S.vtarget,S.visitors-Math.max(1,Math.ceil(S.visitors*(S.night?.06:.04))));
   S.peak=Math.max(S.peak,S.visitors);
   const lv=LEVELS.filter(v=>S.peak>=v).length;
   if(lv>S.level){S.level=lv;const nu=Object.keys(UNLOCK).filter(k=>UNLOCK[k]===lv).map(toolName);log('Park rating up to '+'★'.repeat(lv)+'. Unlocked: '+nu.join(', ')+'.','good');tone('triangle',520,1040,.4,.08);renderTools();}
@@ -2039,8 +2066,8 @@ const PERKS={quiet:['Light feet','Predators and contractors notice you 20% later
   steady:['Steady hands','40% less spread and 25% faster reloads.'],tough:['Thick skin','+30 maximum health.'],medic:['Field medic','Healing items are 50% stronger.'],
   darts:['Dart master','Tranquilizer darts are 50% stronger.'],pack:['Packrat','Carry 50% more ammo and supplies.'],ash:['Ash lungs','Take 40% less damage in the ash cloud.'],eagle:['Tracker','Animals you spot stay on the map longer and scanners recharge twice as fast.']};
 const XPLV=[0,80,200,360,560,800,1100,1450,1850];
-const HITR={galli:.75,trike:1.25,raptor:.7,rex:1.55,compy:.35};
-const TQNEED={galli:2,trike:4,raptor:2,rex:7,compy:1};
+const HITR={galli:.75,para:.8,stego:1.3,brachio:1.9,dilo:.7,trike:1.25,raptor:.7,rex:1.55,compy:.35};
+const TQNEED={galli:2,para:2,stego:4,brachio:8,dilo:2,trike:4,raptor:2,rex:7,compy:1};
 const STAFFN=['Dr. Amara Okafor','Keeper Lindiwe Dube','Mechanic Joaquín Reyes','Vet Hana Sato','Ranger Pieter Botha','Tech Priya Nair'];
 
 // ================= survival: state =================
@@ -2312,11 +2339,11 @@ function driveCar(dt){
   if(sp>4.5&&c.ramT<=0){
     for(const d of dinos){if(d.dead)continue;const r=HITR[d.kind]*(d.mesh.scale.x/D[d.kind].size)+1.1;const dx=d.pos.x-c.pos.x,dz=d.pos.z-c.pos.z,dd=Math.hypot(dx,dz);
       if(dd>r||(dx*fx+dz*fz)*Math.sign(c.speed)<0)continue;
-      c.ramT=.6; const dmg=sp*3.2; d.hp-=dmg; d.stunT=d.kind==='rex'?.5:d.kind==='trike'?.8:1.8;
-      const k=(d.kind==='rex'||d.kind==='trike')?.6:2.2; tryMove(d.pos,dx/(dd||1)*k,dz/(dd||1)*k);
-      c.hp-={compy:.5,galli:4,raptor:6,trike:16,rex:22}[d.kind]||6; c.speed*=(d.kind==='rex'||d.kind==='trike')?.15:.6;
+      c.ramT=.6; const dmg=sp*3.2; d.hp-=dmg; d.stunT=d.kind==='rex'||d.kind==='brachio'?.5:HEAVY.has(d.kind)?.8:1.8;
+      const k=HEAVY.has(d.kind)?.6:2.2; tryMove(d.pos,dx/(dd||1)*k,dz/(dd||1)*k);
+      c.hp-={compy:.5,galli:4,para:5,raptor:6,dilo:6,trike:16,stego:16,rex:22,brachio:30}[d.kind]||6; c.speed*=HEAVY.has(d.kind)?.15:.6;
       thud(); shake(.4,.35); burst(d.pos.clone().add(new THREE.Vector3(0,1,0)),10);
-      if(d.hp<=0)killDino(d); else if(d.state!=='tranq'&&(D[d.kind].carn||d.kind==='trike')){d.state='chase';d.tgt=PL;d.last=P.pos.clone();d.lost=0;}
+      if(d.hp<=0)killDino(d); else if(d.state!=='tranq'&&(D[d.kind].carn||CHARGE.has(d.kind))){d.state='chase';d.tgt=PL;d.last=P.pos.clone();d.lost=0;}
       if(!S.warned.ram){S.warned.ram=1;log('You rammed '+d.name.toLowerCase()+'. That will not make it any friendlier.','warn');}
       break;}
     for(const m of mercs){if(m.dead||m.ko>0)continue;if(Math.hypot(m.pos.x-c.pos.x,m.pos.z-c.pos.z)<1.6){c.ramT=.6;m.ko=40;m.mesh.rotation.z=1.4;P.kos++;addXP(50,'Contractor run down');bodies.includes(m)||bodies.push(m);thud();c.hp-=4;c.speed*=.7;break;}}
@@ -2500,7 +2527,7 @@ function applyHit(tg,w){
     else{e.tq+=tqv; e.hp-=w.dmg||0;
       if(e.hp<=0){killDino(e);return;}
       if(e.tq>=TQNEED[e.kind]*(e.traits.size?1.5:1)){koDino(e);return;}
-      if(D[e.kind].carn||e.kind==='trike'){e.state='chase';e.tgt=PL;e.last=P.pos.clone();e.lost=0;}
+      if(D[e.kind].carn||CHARGE.has(e.kind)){e.state='chase';e.tgt=PL;e.last=P.pos.clone();e.lost=0;}
       else{e.fleeT=4;}}
     if(e.hp<=0)killDino(e);
   }else if(tg.t==='fly'){
@@ -2514,9 +2541,9 @@ function applyHit(tg,w){
     e.state='engage';e.tgt=PL;e.last=P.pos.clone();e.lost=0;
   }
 }
-function koDino(d){d.state='tranq';d.sleepT=d.kind==='rex'?30:45;d.tq=0;d.sleep=1;P.kos++;const xp={compy:5,galli:15,raptor:30,trike:30,rex:90}[d.kind]||20;addXP(xp,d.name+' tranquilized');tone('square',1200,300,.15,.05);}
+function koDino(d){d.state='tranq';d.sleepT=d.kind==='rex'?30:45;d.tq=0;d.sleep=1;P.kos++;const xp={compy:5,galli:15,para:15,raptor:30,dilo:30,trike:30,stego:30,brachio:60,rex:90}[d.kind]||20;addXP(xp,d.name+' tranquilized');tone('square',1200,300,.15,.05);}
 function killDino(d){if(d.dead)return;d.dead=true;d.state='dead';d.sleep=1;d.moving=false;P.kills++;for(const m of d.mesh.userData.mats){m.color.multiplyScalar(.6);}
-  const xp={compy:4,galli:15,raptor:35,trike:40,rex:120}[d.kind]||20;addXP(xp,d.name+' killed');}
+  const xp={compy:4,galli:15,para:15,raptor:35,dilo:35,trike:40,stego:40,brachio:80,rex:120}[d.kind]||20;addXP(xp,d.name+' killed');}
 function melee(){
   shotSnd('melee'); const f=new THREE.Vector3(-Math.sin(P.yaw),0,-Math.cos(P.yaw)); P.face=Math.atan2(Math.cos(P.yaw),-Math.sin(P.yaw));
   let best=null,bd=WEAP.baton.range;
@@ -2702,10 +2729,10 @@ function dinoAI(d,dt,L){
   let goal=null,speed=d.st.speed,running=false,chasing=false,hunting=null;
   // pick a target
   let tgt=null,td=1e9;
-  if(def.carn||d.kind==='trike'){
+  if(def.carn||CHARGE.has(d.kind)){
     for(const h of HUM){if(!humanAlive(h))continue;if(d.kind==='compy'&&h.type==='merc')continue;
       const hp=h.pos; const dist=Math.hypot(hp.x-d.pos.x,hp.z-d.pos.z);
-      let r=d.kind==='trike'?4.5:d.st.detect*(night&&d.traits.nv?1.6:1)*humanStealth(h)*(night?1:.85)*(d.kind==='compy'&&!night?.6:1);
+      let r=CHARGE.has(d.kind)?4.5:d.st.detect*(night&&d.traits.nv?1.6:1)*humanStealth(h)*(night?1:.85)*(d.kind==='compy'&&!night?.6:1);
       if(d.state==='sleep')r=Math.min(r,(h.type==='player'&&P.sprinting)?7:3.2);
       if(d.state==='chase'&&d.tgt===h)r*=1.8;
       if(dist<r&&dist<td){td=dist;tgt=h;}
@@ -2739,9 +2766,9 @@ function dinoAI(d,dt,L){
     else if(d.state==='lured'){if(flare){goal=flare.pos;speed=d.st.speed*1.5;}else d.state='wander';}
     else if(d.state==='shocked'){d.shockT-=dt;goal={x:d.pos.x*2-d.shockFrom.x,z:d.pos.z*2-d.shockFrom.z};speed=d.st.run*.8;if(d.shockT<=0)d.state='wander';}
     else if(d.state==='alert'){goal=d.alertPos;speed=d.st.speed*1.7;d.alertT-=dt;if(d.alertT<=0||Math.hypot(goal.x-d.pos.x,goal.z-d.pos.z)<2){d.state='search';d.last=d.alertPos;d.searchT=6;}}
-  }else if(d.kind==='trike'){
+  }else if(CHARGE.has(d.kind)){
     if(tgt){goal=tgt.pos;speed=d.st.run;running=true;chasing=true;d.tgt=tgt;}
-  }else if(d.kind==='galli'){
+  }else if(d.kind==='galli'||d.kind==='para'){
     const pd=Math.hypot(P.pos.x-d.pos.x,P.pos.z-d.pos.z);
     if((pd<7&&!P.hidden)||d.fleeT>0){d.fleeT=Math.max(0,(d.fleeT||0)-dt);goal={x:d.pos.x-(P.pos.x-d.pos.x),z:d.pos.z-(P.pos.z-d.pos.z)};speed=d.st.run;running=true;}
   }
@@ -2776,8 +2803,8 @@ function dinoAI(d,dt,L){
     const tp=d.tgt.pos, dist=Math.hypot(tp.x-d.pos.x,tp.z-d.pos.z);
     const reach=d.kind==='compy'?.75:.8+d.st.size*.95;
     if(dist<reach&&d.cd<=0&&humanAlive(d.tgt)){
-      d.cd=d.kind==='rex'?1.3:d.kind==='trike'?1.7:d.kind==='compy'?1.1:.9; d.biteT=.35;
-      hurtEnt(d.tgt,d.st.dmg,d); if(d.tgt===PL){thud();if(d.kind==='rex')shake(.5,.5);if(d.kind==='trike'){const k=2.6/(dist||1);tryMove(P.pos,(tp.x-d.pos.x)*k,(tp.z-d.pos.z)*k);}}
+      d.cd=d.kind==='rex'?1.3:CHARGE.has(d.kind)?1.7:d.kind==='compy'?1.1:.9; d.biteT=.35;
+      hurtEnt(d.tgt,d.st.dmg,d); if(d.tgt===PL){thud();if(d.kind==='rex')shake(.5,.5);if(CHARGE.has(d.kind)){const k=2.6/(dist||1);tryMove(P.pos,(tp.x-d.pos.x)*k,(tp.z-d.pos.z)*k);}}
     }
   }
   return (chasing&&def.carn&&d.tgt===PL)?hunting:null;
@@ -3132,7 +3159,7 @@ function renderBuilderHud(){
   $('nextInfo').textContent=S.level>=5?'Max rating':'peak '+S.peak+' / '+LEVELS[S.level];
   $('maintCost').textContent=fmt(fList.length*MAINT[S.maint].cost*60)+'/min';
   const items=[['Build the Visitor Centre',countType('visitor')>0],['Lay a road from it',roadConn.size>0],['Build a generator',countType('gen')>0],
-    ['Fence a closed paddock',regionPublic.some((p,i)=>!p&&regionSize[i]>=8)],['Hatch a dinosaur visitors can see',S.display>0],['Reach ★★ (150 visitors)',S.level>=2],
+    ['Fence a closed paddock',regionPublic.some((p,i)=>!p&&regionSize[i]>=8)],['Hatch a dinosaur visitors can see',S.display>0],['Reach ★★ ('+LEVELS[1]+' visitors)',S.level>=2],
     ['Open a harbor for ferries',listType('harbor').some(hasAccess)],['Decorate the Visitor Centre plaza',(S.happyParts||[]).some(p=>p[0]==='Scenery and decorations'&&p[1]>=5)],['Open an attraction',bList.some(b=>B[b.type].attr&&hasAccess(b))],['Reach ★★★★★',S.level>=5]];
   const html=items.map(([t,d])=>'<div class="'+(d?'done':'')+'">'+t+'</div>').join('');
   if($('checklist').innerHTML!==html)$('checklist').innerHTML=html;
