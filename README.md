@@ -14,3 +14,6 @@ Each player creates a director profile (name and picture) with their own saved p
 
 ## Feedback for testers
 Please note what you were doing when something felt wrong or broke, your device and browser, and how many days you'd played.
+
+## Credits
+Profile pictures are icons from [game-icons.net](https://game-icons.net) by Lorc, Delapouite and contributors, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). 3D rendering by [three.js](https://threejs.org) (MIT).
