@@ -345,7 +345,30 @@ body.compact .legalbody table,body.compact .legalbody thead,body.compact .legalb
 body.compact .legalbody thead{display:none}
 body.compact .legalbody td{border:0;padding:2px 0}
 body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
-@media (prefers-reduced-motion:reduce){#banner div{animation:none}.msg{transition:none}}
+/* ---------- text size ---------- */
+#top,#ops,#barInner,#hint,#log,#vitals,#objective,#prompt,#wbar,#menuBtn,#advisor,#pauseTag,#mmWrap,.overlay>.card{zoom:var(--uiz,1)}
+.overlay>.card{max-width:calc((100vw - 32px)/var(--uiz,1));max-height:calc((100vh - 24px)/var(--uiz,1))}
+#ops{max-height:calc((100vh - 170px)/var(--uiz,1))}
+#barInner{max-width:calc(100%/var(--uiz,1))}
+/* ---------- advisor ---------- */
+#advisor{position:fixed;left:16px;top:340px;display:flex;flex-direction:column;gap:6px;z-index:6;width:240px;pointer-events:none}
+.adv{pointer-events:auto;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--volt);border-radius:6px;padding:5px 22px 5px 5px;text-align:left;position:relative;animation:advIn .35s ease-out;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.adv:hover{border-color:var(--line-hi)}
+.adv i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--ink);font-size:16px;flex:0 0 auto}
+.adv span{font-size:12.5px;line-height:1.25;flex:1;min-width:0;color:var(--text)}
+.adv small{display:none;color:var(--muted);font-size:11px;margin-top:1px}
+.adv:hover small,.adv:focus small{display:block}
+.advmore{pointer-events:auto;align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font-size:12px;color:var(--volt)}
+.adv.warn{border-left-color:var(--amber)} .adv.alert{border-left-color:var(--alert)} .adv.good{border-left-color:var(--leaf)}
+.adv.alert i{background:#3a1c16}
+.adv .x{position:absolute;top:2px;right:3px;background:none;border:0;color:var(--muted);font-size:13px;padding:2px 5px;line-height:1}
+.adv .x:hover{color:var(--text)}
+@keyframes advIn{from{opacity:0;transform:translateX(-12px)}}
+body.compact #advisor{width:auto;left:12px}
+body.compact .adv span{display:none}
+body.compact .adv{padding:3px}
+body.compact .adv .x{display:none}
+@media (prefers-reduced-motion:reduce){#banner div{animation:none}.msg{transition:none}.adv{animation:none}}
 </style>
 
 <canvas id="c" tabindex="0" aria-label="Island view"></canvas>
@@ -392,6 +415,7 @@ body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
   </details>
 
   <div id="hint" class="panel" hidden></div>
+  <div id="advisor" aria-live="polite"></div>
   <div id="pauseTag" class="panel" hidden>PAUSED · SPACE TO RESUME</div>
   <div id="bar"><div id="barInner" class="panel">
     <div id="tabs" role="tablist">
@@ -464,6 +488,8 @@ body.compact .legalbody tr{border-bottom:1px solid var(--line);padding:6px 0}
     <div id="menuMsg" role="status"></div>
     <div class="setrow"><span>Sound</span><button id="sSound" class="toggle" aria-pressed="true">On</button></div>
     <div class="setrow"><label for="sVol">Volume</label><input type="range" id="sVol" min="0" max="1" step="0.05"></div>
+    <div class="setrow"><span>Text size</span><div class="seg" id="sUi" role="group" aria-label="Text size" style="min-width:220px"><button data-ui="1">Normal</button><button data-ui="1.15">Large</button><button data-ui="1.3">Extra large</button></div></div>
+    <div class="setrow"><span>Advisor tips</span><button id="sAdv" class="toggle" aria-pressed="true">On</button></div>
     <div class="setrow"><label for="sSens">Mouse sensitivity</label><input type="range" id="sSens" min="0.3" max="2.5" step="0.1"></div>
     <details><summary class="label" style="cursor:pointer">Controls</summary>
       <div class="keys" style="margin-top:8px">
@@ -828,7 +854,7 @@ function genWorldData(avoid){for(let i=0;i<10;i++){const l=genIsland();if(l>1800
 genWorldData();
 
 // ================= definitions =================
-const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.18 (10 Oct 2026)';
+const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.19 (11 Oct 2026)';
 // The park runs on its own clock. At 1x one park day takes 20 real minutes (72 park seconds per real second).
 const DAYMS=86400000, TSCALE=72, HOUR=3600000;
 function nowMs(){return S.pt||0;}
@@ -888,11 +914,11 @@ const TECH={
   watch:{name:'Park surveillance',cost:4000,h:14,desc:'Half as many security incidents and faults.',req:'grid'},
 };
 const SITES={
-  gobi:{short:'Gobi',name:'Gobi Desert, Mongolia',pool:['raptor'],cost:1200,h:5,lv:1},
-  kayenta:{short:'Kayenta',name:'Kayenta Formation, Arizona',pool:['dilo'],cost:1500,h:6,lv:1},
-  tendaguru:{short:'Tendaguru',name:'Tendaguru, Tanzania',pool:['brachio'],cost:2500,h:10,lv:2},
-  niobrara:{short:'Niobrara',name:'Niobrara Chalk, Kansas',pool:['ptero','mosa'],cost:3500,h:12,lv:3},
-  hellcreek:{short:'Hell Creek',name:'Hell Creek, Montana',pool:['rex'],cost:4000,h:15,lv:3},
+  gobi:{short:'Gobi',name:'Gobi Desert, Mongolia',pool:['raptor'],cost:900,h:3,lv:1,gain:[45,65]},
+  kayenta:{short:'Kayenta',name:'Kayenta Formation, Arizona',pool:['dilo'],cost:1100,h:3,lv:1,gain:[45,65]},
+  tendaguru:{short:'Tendaguru',name:'Tendaguru, Tanzania',pool:['brachio'],cost:2000,h:6,lv:2,gain:[35,50]},
+  niobrara:{short:'Niobrara',name:'Niobrara Chalk, Kansas',pool:['ptero','mosa'],cost:3000,h:8,lv:3,gain:[30,45]},
+  hellcreek:{short:'Hell Creek',name:'Hell Creek, Montana',pool:['rex'],cost:3500,h:10,lv:3,gain:[28,42]},
 };
 const FINDS=['a partial skull','a femur','a run of vertebrae','fossilised eggshell','a jaw with teeth','a near-complete limb','amber with preserved blood'];
 const hasGenome=k=>!D[k]||k==='compy'||(S.genome&&(S.genome[k]||0)>=100);
@@ -1480,7 +1506,7 @@ function makeHuman(c1,c2,c3,gun){
 
 // ================= audio =================
 let audio=null, noiseBuf=null, master=null;
-const SET={sound:true,vol:.8,sens:1};
+const SET={sound:true,vol:.8,sens:1,ui:null,adv:true};
 try{Object.assign(SET,JSON.parse(localStorage.getItem('eden-settings')||'{}'));}catch(e){}
 function saveSettings(){try{localStorage.setItem('eden-settings',JSON.stringify(SET));}catch(e){}if(master)master.gain.value=SET.sound?SET.vol:0;}
 function ac(){try{if(!audio){audio=new (window.AudioContext||window.webkitAudioContext)();const n=audio.sampleRate*2;master=audio.createGain();master.gain.value=SET.sound?SET.vol:0;master.connect(audio.destination);noiseBuf=audio.createBuffer(1,n,audio.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<n;i++)d[i]=Math.random()*2-1;}if(audio.state==='suspended')audio.resume();}catch(e){audio=null;}return audio;}
@@ -1740,7 +1766,7 @@ function eraTick(){
   if(S.eraUp&&nowMs()>=S.eraUp.end){const to=S.eraUp.to;S.era=to;S.eraUp=null;refreshEraLook();renderTools();shake(.2,.6);
     tone('triangle',392,784,.5,.09);setTimeout(()=>tone('triangle',523,1046,.6,.09),260);
     log('A new era: '+ERAS[to].name+'! '+ERAS[to].perks.slice(0,3).join(', ')+'.','good'); grantClaim('Investors want the '+ERAS[to].name+' to grow.');}
-  for(const b of bList)if(b.upEnd&&nowMs()>=b.upEnd){setLevel(b,b.upTo);b.upEnd=null;b.upTo=null;if(b.scaf){scene.remove(b.scaf);b.scaf=null;}log(B[b.type].name+' upgraded to Level '+b.up+'.','good');tone('triangle',500,750,.15,.05);}
+  for(const b of bList)if(b.upEnd&&nowMs()>=b.upEnd){setLevel(b,b.upTo);b.upEnd=null;b.upTo=null;if(b.scaf){scene.remove(b.scaf);b.scaf=null;}log(B[b.type].name+' upgraded to Level '+b.up+'.','good');advEvent('upd-'+b.x+'_'+b.z,'⬆️',B[b.type].name+' reached Level '+b.up,UPEFF[b.type]+'.',()=>openB(b));tone('triangle',500,750,.15,.05);}
   const nx=(S.era||0)+1; if(ERAS[nx]&&!S.eraUp&&!S.warned['era'+nx]&&eraReady()){S.warned['era'+nx]=1;log('Your park is ready to advance to the '+ERAS[nx].name+' era. Open the Visitor Centre to begin.','good');}
 }
 const STRAIN={wonder:8,gen:1,visitor:1,harbor:2,food:.5,shop:.5,hotel:2,sec:0,lab:4,waterpark:2,tower:.5,aviary:5,lagoon:6,tour:1,galli:1,para:1,stego:2,trike:3,brachio:4,dilo:6,raptor:8,rex:14,ptero:4,mosa:10};
@@ -2026,7 +2052,7 @@ function renderInfo(){
           h2='<div><div class="row" style="margin-bottom:4px"><span class="label">Team in the field · '+st.name+'</span><span class="num" style="font-size:12px">'+fmtLeft(cur.end)+' left</span></div><div class="meter"><i style="width:'+done*100+'%;background:var(--amber)"></i></div></div>';}
         const rows=Object.entries(SITES).map(([id,st])=>{const lock=S.level<st.lv, all=st.pool.every(hasGenome), dur=expH(st);
           const right=lock?'Rating '+'★'.repeat(st.lv):'<button class="secondary" style="padding:4px 10px" data-act="exp:'+id+'"'+(cur||S.money<st.cost?' disabled':'')+'>'+fmt(st.cost)+' · '+dur+' h</button>';
-          return rowH(st.name,right,'Fossils of '+st.pool.map(k=>D[k].name+' ('+Math.floor(S.genome[k]||0)+'%)').join(', ')+(all?' · genomes complete, finds sell to museums for profit':''),lock?'mid':'');}).join('');
+          return rowH(st.name,right,'Fossils of '+st.pool.map(k=>D[k].name+' ('+Math.floor(S.genome[k]||0)+'%)').join(', ')+' · '+st.gain[0]+'–'+st.gain[1]+'% per trip'+(all?' · genomes complete, finds sell to museums for profit':''),lock?'mid':'');}).join('');
         body=h2+'<div class="ilist">'+rows+'</div><p class="ipara">Each expedition brings back fossils that fill in part of a genome. At 100% you can hatch that species. Times are in park hours, so higher game speeds bring teams home sooner.</p>';
       }else{
         const ks=Object.keys(D).filter(k=>k!=='compy');
@@ -2100,6 +2126,64 @@ function pickAt(cx,cy){
   const g=groundAt(cx,cy); if(!g)return null; const t=worldToTile(g.x,g.z);
   if(inB(t.x,t.z)){const c=cells[t.x][t.z];if(c&&c.mesh)return c;}
   const d=dinoNear(g,1.6); return d&&d.kind!=='compy'?d:null;
+}
+
+// ---------- advisor: Total War style reminders of what you can do next ----------
+const advSnooze={}; let advEvents=[], advSig='', advSeen=new Set(), advMore=false;
+function flyTo(v){cam.tx=v.x;cam.tz=v.z;cam.dist=Math.min(cam.dist,45);}
+function openB(b){if(!b)return;flyTo(b.c);openInfo(b);}
+function openVC(tab){const b=listType('visitor')[0];if(!b)return;openB(b);if(tab)infoAct('tab:'+tab);}
+function pickTool(tb,t){setTab(tb);selectTool(t);}
+function advEvent(id,icon,title,detail,act,kind){advEvents=advEvents.filter(e=>e.id!==id);advEvents.unshift({id,icon,title,detail,act,kind:kind||'good',until:nowMs()+12*HOUR});}
+function advRules(){
+  const out=[], add=(id,pri,icon,title,detail,act,kind)=>{if((advSnooze[id]||0)>nowMs())return;out.push({id,pri,icon,title,detail,act,kind:kind||''});};
+  const loose=dinos.filter(d=>d.escaped&&d.kind!=='compy');
+  if(loose.length)add('esc',100,'🚨',loose.length+' animal'+(loose.length>1?'s':'')+' loose','Tranquilize '+(loose.length>1?'them':'it')+' from Operations, or build a Security Office.',()=>{flyTo(loose[0].pos);pickTool('ops','tranq');},'alert');
+  if(S.draw>S.cap)add('power',90,'⚡','Fences without power',(S.draw-S.cap)+' sections are dead. Build or upgrade a generator.',()=>pickTool('build','gen'),'alert');
+  const down=fList.filter(f=>f.hp<=0);
+  if(down.length)add('fence',85,'🚧',down.length+' fence section'+(down.length>1?'s':'')+' down','Repair them before something notices.',()=>{flyTo(tileCenter(down[0].x,down[0].z));pickTool('ops','repair');},'warn');
+  const st=dinos.filter(d=>!d.escaped&&d.comfort!=null&&d.comfort<40).sort((a,b)=>a.comfort-b.comfort)[0];
+  if(st){const w=(st.needs||[]).filter(n=>n[1]<0).sort((a,b)=>a[1]-b[1])[0];add('stress',80,'😟',st.name+' is stressed',w?w[0]+': '+w[2]:'Check its needs.',()=>{flyTo(st.pos);openInfo(st);},'warn');}
+  if(S.vcap>0&&S.visitors>=S.vcap*.95&&!S.night)add('full',60,'🚌','The park is full','Build restaurants, shops, hotels or attractions to fit more guests.',()=>setTab('build'),'warn');
+  if(S.visitors>40&&S.happy<45)add('happy',58,'🙁','Guests are unhappy','See what they are missing in the Visitor Centre.',()=>openVC('park'),'warn');
+  if(eraReady()&&!S.eraUp)add('era',70,'🏛','Ready for the '+ERAS[(S.era||0)+1].name+' era','Advance your park from the Visitor Centre.',()=>openVC('era'));
+  if(S.claims>0)add('claim',68,'🗺️','Land claim to spend','Choose where the island grows next.',()=>openVC('island'));
+  const ready=Object.keys(D).filter(k=>k!=='compy'&&!START_GENOMES[k]&&hasGenome(k)&&!dinos.some(d=>d.kind===k)&&!(k==='ptero'&&listType('aviary').some(a=>a.pteros.length))&&!(k==='mosa'&&listType('lagoon').some(l=>l.mosa)));
+  if(ready.length&&unlocked(ready[0]))add('hatch-'+ready[0],66,'🦖','Ready to hatch: '+D[ready[0]].name,'Its genome is complete.',()=>pickTool('dinos',ready[0]));
+  const lab=listType('lab')[0];
+  if(lab&&!S.research&&Object.entries(TECH).some(([id,T])=>!S.tech[id]&&(!T.req||S.tech[T.req])&&S.money>=T.cost))add('lab',50,'🧪','The lab is idle','Start a research project.',()=>openB(lab));
+  const dig=listType('dig')[0];
+  if(dig&&!S.exped&&Object.values(SITES).some(x=>S.level>=x.lv&&!x.pool.every(hasGenome)&&S.money>=x.cost))add('dig',52,'🦴','Your dig team is idle','Send an expedition to find new species.',()=>openB(dig));
+  if(!dig&&S.peak>=25&&unlocked('dig'))add('nodig',45,'🦴','Find new species','Build a Fossil Dig Site and send expeditions.',()=>pickTool('build','dig'));
+  if(!dinos.length&&countType('visitor')&&roadConn.size)add('first',44,'🦕','Hatch your first dinosaur','Fence a paddock beside a road, then add a feeder.',()=>pickTool('build','paddock'));
+  const ub=bList.filter(b=>UPG.has(b.type)&&!upgradeBlock(b)&&S.money>upCost(b,(b.up||1)+1)*2).sort((a,b)=>B[b.type].cost-B[a.type].cost)[0];
+  if(ub)add('up-'+ub.type+ub.x+'_'+ub.z,40,'⬆️','Upgrade '+B[ub.type].name,'Level '+((ub.up||1)+1)+': '+UPEFF[ub.type]+'.',()=>openB(ub));
+  const tr=listType('tour').find(b=>b.jeeps<maxJeeps(b));
+  if(tr&&S.money>JEEPCOST*3)add('jeep',35,'🚙','Room for another jeep','More jeeps mean more hype and capacity.',()=>openB(tr));
+  for(const e of advEvents)if(e.until>nowMs())out.push({...e,pri:75,event:true});
+  advEvents=advEvents.filter(e=>e.until>nowMs());
+  return out.sort((a,b)=>b.pri-a.pri);
+}
+function advRender(force){
+  const el=$('advisor');
+  if(!SET.adv||S.phase!=='build'){if(el.innerHTML)el.innerHTML='';advSig='';return;}
+  const all=advRules(), room=advMore?12:Math.max(1,Math.min(8,Math.floor((innerHeight-el.getBoundingClientRect().top-190)/(40*uiz()))));
+  const list=all.slice(0,room), extra=all.length-list.length, sig=list.map(a=>a.id+a.title).join('|')+'#'+extra+advMore;
+  if(sig===advSig&&!force)return; advSig=sig; el.innerHTML='';
+  let fresh=false;
+  for(const a of list){
+    const b=document.createElement('div'); b.className='adv '+a.kind; b.setAttribute('role','button'); b.tabIndex=0; b.title=a.title+'. '+a.detail;
+    const i=document.createElement('i'); i.textContent=a.icon; const sp=document.createElement('span'); sp.textContent=a.title; const sm=document.createElement('small'); sm.textContent=a.detail; sp.appendChild(sm);
+    const x=document.createElement('button'); x.className='x'; x.setAttribute('aria-label','Dismiss'); x.textContent='×';
+    x.onclick=e=>{e.stopPropagation();if(a.event)advEvents=advEvents.filter(v=>v.id!==a.id);else advSnooze[a.id]=nowMs()+6*HOUR;advRender(true);};
+    const go=()=>{if(a.event)advEvents=advEvents.filter(v=>v.id!==a.id);else advSnooze[a.id]=nowMs()+HOUR;try{a.act&&a.act();}catch(e){}advRender(true);};
+    b.onclick=go; b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
+    b.append(i,sp,x); el.appendChild(b);
+    if(!advSeen.has(a.id)){advSeen.add(a.id);fresh=true;}
+  }
+  el.classList.toggle('more',advMore);
+  if(extra>0||advMore){const m=document.createElement('button');m.className='advmore';m.textContent=advMore?'Show fewer':'+'+extra+' more';m.onclick=()=>{advMore=!advMore;advRender(true);};el.appendChild(m);}
+  if(fresh&&!force)tone('triangle',880,1175,.12,.035);
 }
 
 // ================= camera & input =================
@@ -2373,12 +2457,13 @@ function computeNeeds(){
 function techTick(){
   eraTick();
   const now=nowMs();
-  if(S.research&&now>=S.research.end){const id=S.research.id;S.tech[id]=1;S.research=null;log('Research complete: '+TECH[id].name+'. '+TECH[id].desc,'good');tone('triangle',520,1040,.4,.08);S.dirty=true;renderTools();}
+  if(S.research&&now>=S.research.end){const id=S.research.id;S.tech[id]=1;S.research=null;advEvent('res-'+id,'🧪','Research complete: '+TECH[id].name,TECH[id].desc,()=>openB(listType('lab')[0]));log('Research complete: '+TECH[id].name+'. '+TECH[id].desc,'good');tone('triangle',520,1040,.4,.08);S.dirty=true;renderTools();}
   if(S.exped&&now>=S.exped.end){const st=SITES[S.exped.site];S.exped=null;
     const open=st.pool.filter(k=>!hasGenome(k));
     if(!open.length){const v=Math.round(st.cost*1.4);S.money+=v;log('Expedition back from '+st.name+'. The genomes there are already complete, so the fossils were sold to a museum for '+fmt(v)+'.','good');renderTools();return;}
     const k=pick(open);
-    const gain=Math.round(ri(28,45)*(S.tech.fossil?1.5:1)*(1+.15*(lvOf('dig')-1))), before=S.genome[k]||0; S.genome[k]=Math.min(100,before+gain); S.expCount=(S.expCount||0)+1;
+    const gain=Math.round(ri(st.gain[0],st.gain[1])*(S.tech.fossil?1.5:1)*(1+.15*(lvOf('dig')-1))), before=S.genome[k]||0; S.genome[k]=Math.min(100,before+gain); S.expCount=(S.expCount||0)+1;
+    advEvent('exp','🦴','Expedition back from '+st.short,D[k].name+' genome '+Math.min(100,Math.floor(S.genome[k]+0))+'%.',()=>openB(listType('dig')[0]));
     log('Expedition back from '+st.name+' with '+pick(FINDS)+'. '+D[k].name+' genome '+Math.floor(S.genome[k])+'%.','good');
     if(before<100&&S.genome[k]>=100){grantClaim('The '+D[k].name+' needs room to roam.');log(D[k].name+' genome complete! You can now hatch '+D[k].name+(k==='mosa'?' in a lagoon':k==='ptero'?' in an aviary':'')+'.','good');tone('triangle',520,1040,.5,.09);}
     renderTools();}
@@ -2421,7 +2506,7 @@ function econTick(){
   else if(S.visitors>S.vtarget)S.visitors=Math.max(S.vtarget,S.visitors-Math.max(1,Math.ceil(S.visitors*(S.night?.06:.04))));
   S.peak=Math.max(S.peak,S.visitors);
   const lv=LEVELS.filter(v=>S.peak>=v).length;
-  if(lv>S.level){S.level=lv;const nu=Object.keys(UNLOCK).filter(k=>UNLOCK[k]===lv).map(toolName);log('Park rating up to '+'★'.repeat(lv)+'. Unlocked: '+nu.join(', ')+'.','good');tone('triangle',520,1040,.4,.08);renderTools();}
+  if(lv>S.level){S.level=lv;const nu=Object.keys(UNLOCK).filter(k=>UNLOCK[k]===lv).map(toolName);advEvent('rating','⭐','Park rating '+'★'.repeat(lv),'Unlocked: '+nu.join(', ')+'.',()=>setTab('attr'));log('Park rating up to '+'★'.repeat(lv)+'. Unlocked: '+nu.join(', ')+'.','good');tone('triangle',520,1040,.4,.08);renderTools();}
   const nm=S.night?.7:1, hmI=.8+.4*S.happy/100;
   let shopRev=0;
   for(const sh of acc('shop').slice(0,4)){const r=nm*hmI*S.visitors*.018*(1+.35*(sh.stock||0))*(1+.25*((sh.up||1)-1));sh.rev+=r;sh.sales+=r/14;shopRev+=r;}
@@ -2499,7 +2584,7 @@ function triggerCollapse(){
   stat('collapses',1);
   S.causeKey=pickCause(); S.cause=CAUSE[S.causeKey];
   S.collapsed=true; S.phase='collapse'; collapseT=0; S.collapseDay=S.day; S.collapseL=Math.max(.3,lightOf(bTod())); S.collapseTod=bTod();
-  selectTool(null); ghost.count=0; $('lab').hidden=true; $('hint').hidden=true; $('pauseTag').hidden=true; closeInfo(); canvas.style.cursor='';
+  selectTool(null); ghost.count=0; $('lab').hidden=true; $('hint').hidden=true; $('pauseTag').hidden=true; closeInfo(); $('advisor').innerHTML=''; canvas.style.cursor='';
   $('bannerSub').textContent=S.cause;
   $('banner').hidden=false; siren(6); rainTarget=1; lightningT=.8;
   if(S.causeKey==='eruption'){erupting=true;shake(1,3);noise(3,60,.4,.6,30);}
@@ -3101,9 +3186,13 @@ $('aE').onclick=()=>interact();$('aX').onclick=()=>toggleHide();$('aR').onclick=
 $('aC').onclick=()=>{P.crouch=!P.crouch;};$('aS').onclick=()=>{P.sprintTouch=!P.sprintTouch;};$('aM').onclick=()=>document.body.classList.toggle('more');
 $('aF').onclick=()=>eat();$('aV').onclick=()=>drink();$('aG').onclick=()=>throwFlare();$('aL').onclick=()=>{P.light=!P.light;};$('aMap').onclick=()=>document.body.classList.toggle('bigmap');
 $('objective').onclick=()=>{if(document.body.classList.contains('compact'))document.body.classList.toggle('objopen');};
-function placeMinimap(){const w=$('mmWrap');if(document.body.classList.contains('survival')||$('builderUI').hidden){w.style.top='';return;}const b=$('top').getBoundingClientRect().bottom;if(b>0)w.style.top=Math.round(b+8)+'px';}
+const uiz=()=>SET.ui||1;
+function applyUI(){if(!SET.ui)SET.ui=innerWidth<760||innerHeight<500?1:1.15;document.documentElement.style.setProperty('--uiz',SET.ui);document.querySelectorAll('#sUi button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.ui===SET.ui?'true':'false'));placeMinimap();}
+function placeMinimap(){const w=$('mmWrap');if(document.body.classList.contains('survival')||$('builderUI').hidden){w.style.top='';return;}
+  const z=uiz(), b=$('top').getBoundingClientRect().bottom; if(b>0)w.style.top=Math.round((b+8)/z)+'px';
+  const mb=w.getBoundingClientRect().bottom; if(mb>0)$('advisor').style.top=Math.round((mb+8)/z)+'px';}
 function layout(){document.body.classList.toggle('compact',innerWidth<760||innerHeight<500);document.body.classList.toggle('portrait',innerHeight>innerWidth);}
-window.addEventListener('resize',()=>{layout();placeMinimap();});layout();
+window.addEventListener('resize',()=>{layout();placeMinimap();});layout();applyUI();
 try{if(matchMedia('(pointer:coarse)').matches)document.body.classList.add('touch');}catch(e){}
 let wasLocked=false;
 document.addEventListener('pointerlockchange',()=>{const l=locked();$('lockHint').hidden=l||lockFailed||S.phase!=='survival';if(wasLocked&&!l&&S.phase==='survival'&&!S.paused&&$('perkO').hidden)openMenu();wasLocked=l;});
@@ -3659,7 +3748,7 @@ mm.addEventListener('pointerdown',e=>{if(S.phase!=='build')return;const r=mm.get
 // ================= builder HUD =================
 function fmtLeft(end){return fmtPark(end-nowMs());}
 function renderBuilderHud(){
-  if((clockT|0)!==renderBuilderHud.t){renderBuilderHud.t=clockT|0;placeMinimap();}
+  if((clockT|0)!==renderBuilderHud.t){renderBuilderHud.t=clockT|0;placeMinimap();advRender();}
   $('money').textContent=fmt(S.money); $('money').style.color=S.money<0?'var(--alert)':'';
   $('visitors').textContent=S.visitors.toLocaleString('en-US'); const hp=Math.round(S.happy); $('happy').textContent=hp+'%'; $('happy').dataset.h=hp<40?'low':hp<65?'mid':'hi'; $('day').textContent=S.day+' · '+fmtClock(bTod())+(S.night?' ☾':' ☀');
   $('rating').textContent='★'.repeat(S.level)+'☆'.repeat(5-S.level); $('eraL').textContent=ERAS[S.era||0].short+(S.eraUp?' → '+ERAS[S.eraUp.to].short:'');
@@ -4013,7 +4102,7 @@ function openMenu(){
   syncSettings(); $('menuO').hidden=false; $('mResume').focus();
 }
 function closeMenu(){$('menuO').hidden=true;S.paused=!$('perkO').hidden;canvas.focus();}
-function syncSettings(){$('sSound').setAttribute('aria-pressed',SET.sound?'true':'false');$('sSound').textContent=SET.sound?'On':'Off';$('sVol').value=SET.vol;$('sSens').value=SET.sens;}
+function syncSettings(){$('sAdv').setAttribute('aria-pressed',SET.adv?'true':'false');$('sAdv').textContent=SET.adv?'On':'Off';applyUI();$('sSound').setAttribute('aria-pressed',SET.sound?'true':'false');$('sSound').textContent=SET.sound?'On':'Off';$('sVol').value=SET.vol;$('sSens').value=SET.sens;}
 $('menuBtn').onclick=()=>openMenu();
 $('mResume').onclick=closeMenu;
 $('mSave').onclick=()=>saveGame(false);
@@ -4028,6 +4117,8 @@ $('mExit').onclick=()=>{if(!confirmExit){confirmExit=1;$('mExit').textContent='C
 $('sSound').onclick=()=>{SET.sound=!SET.sound;saveSettings();syncSettings();if(SET.sound)tone('triangle',660,990,.12,.08);};
 $('sVol').oninput=e=>{SET.vol=+e.target.value;saveSettings();};
 $('sSens').oninput=e=>{SET.sens=+e.target.value;saveSettings();};
+document.querySelectorAll('#sUi button').forEach(b=>b.onclick=()=>{SET.ui=+b.dataset.ui;saveSettings();applyUI();});
+$('sAdv').onclick=()=>{SET.adv=!SET.adv;saveSettings();syncSettings();advRender(true);};
 // ================= backups, park files & feedback =================
 const bakKey=()=>{const p=curProf();return !p||p.legacy?'eden-bak':'eden-bak-'+p.id;};
 function readBackups(){try{return JSON.parse(localStorage.getItem(bakKey())||'[]');}catch(e){return [];}}
@@ -4128,7 +4219,7 @@ $('legalWipe').onclick=async()=>{
   $('legalMsg').textContent='All game data deleted.'; setTimeout(()=>location.reload(),900);
 };
 renderProfChip();
-window.__eden={ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
+window.__eden={advRules,advRender,advEvent,ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
   readBackups,pushBackup,fbText,techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
