@@ -7,7 +7,7 @@ A browser park-builder: run a dinosaur park on a volcanic island.
 ## How to play
 - Drag to place paddocks, fences and roads; click to place buildings and dinosaurs. WASD moves the camera, Q/E rotates, the mouse wheel zooms. Esc opens the menu (save, load, sound, exit).
 - **Control time:** pause (Space) or run at 1×, 2× or 4× (keys 1, 2, 3). A park day takes about 20 minutes at 1×. The park keeps earning while you're away (up to 8 hours of offline earnings), and up to one park day passes.
-- **Advisor:** tips appear on the left with things you can do right now: an era ready, an idle lab or dig team, a species ready to hatch, upgrades you can afford, and problems like loose animals or dead fences. Click one to go straight there. Turn it off, or change the **text size**, in the menu.
+- **Director's report:** one panel on the left gathers everything worth knowing, sorted into Needs attention, Completed, Upgrades available, Ready to do and General notices. Click a line to go straight there. Turn it off, or change the **text size**, in the menu.
 - **Grow the island:** four closed regions surround Isla Verde. Each new species you unlock and each new era earns a land claim. Spend it, or buy land, from the Visitor Centre's **Island** tab.
 - **Advance through eras** like Age of Empires: Research Outpost → Safari Park → Island Resort → Global Icon. Each era boosts income and capacity, lets you upgrade buildings to Level 2 and 3, and the last one unlocks a wonder. Start from the Visitor Centre's **Era** tab; upgrade a building by clicking it.
 - Raise your park rating with visitors to unlock new buildings, attractions and species. Keep an eye on system strain in the control room.
