@@ -864,7 +864,7 @@ function genWorldData(avoid){for(let i=0;i<10;i++){const l=genIsland();if(l>1800
 genWorldData();
 
 // ================= definitions =================
-const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.19 (11 Oct 2026)';
+const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.20 (12 Oct 2026)';
 // The park runs on its own clock. At 1x one park day takes 20 real minutes (72 park seconds per real second).
 const DAYMS=86400000, TSCALE=72, HOUR=3600000;
 function nowMs(){return S.pt||0;}
@@ -887,8 +887,8 @@ const B={
   shed:{name:'Maintenance shed',cost:0,b:1,desc:''},
   waterpark:{name:'Water Park',cost:1800,b:1,size:2,attr:1,desc:'2×2 pools and slides. Needs a road beside it. +120 capacity and steady hype.'},
   tower:{name:'Observation Tower',cost:900,b:1,attr:1,desc:'Needs a road beside it. Paddocks within 8 tiles earn 25% more hype.'},
-  aviary:{name:'Aviary',cost:2800,b:1,size:3,attr:1,desc:'3×3 dome for flying reptiles. Add Pteranodons from the Dinosaurs tab. Needs a road beside it.'},
-  lagoon:{name:'Mosasaurus Lagoon',cost:3500,b:1,size:3,attr:1,desc:'3×3 show tank with grandstand. Add a Mosasaurus from the Dinosaurs tab. Needs a road beside it.'},
+  aviary:{name:'Aviary',cost:2800,b:1,size:3,attr:1,desc:'3×3 dome for flying reptiles. Click it to research the Pteranodon genome, then add Pteranodons from the Dinosaurs tab. Needs a road beside it.'},
+  lagoon:{name:'Mosasaurus Lagoon',cost:3500,b:1,size:3,attr:1,desc:'3×3 show tank with grandstand. Click it to research the Mosasaurus genome, then add one from the Dinosaurs tab. Needs a road beside it.'},
   hfeed:{name:'Plant feeder',cost:150,b:1,feeder:'herb',feeds:4,desc:'Place inside a paddock. Feeds up to 4 plant-eaters.'},
   mfeed:{name:'Meat feeder',cost:250,b:1,feeder:'meat',feeds:3,desc:'Place inside a paddock. Feeds up to 3 predators.'},
   dig:{name:'Fossil Dig Site',cost:600,b:1,unique:1,desc:'Send fossil expeditions around the world. Complete a genome to hatch a new species. Click it to plan an expedition.'},
@@ -927,7 +927,7 @@ const SITES={
   gobi:{short:'Gobi',name:'Gobi Desert, Mongolia',pool:['raptor'],cost:900,h:3,lv:1,gain:[45,65]},
   kayenta:{short:'Kayenta',name:'Kayenta Formation, Arizona',pool:['dilo'],cost:1100,h:3,lv:1,gain:[45,65]},
   tendaguru:{short:'Tendaguru',name:'Tendaguru, Tanzania',pool:['brachio'],cost:2000,h:6,lv:2,gain:[35,50]},
-  niobrara:{short:'Niobrara',name:'Niobrara Chalk, Kansas',pool:['ptero','mosa'],cost:3000,h:8,lv:3,gain:[30,45]},
+  niobrara:{short:'Niobrara',name:'Niobrara Chalk, Kansas',pool:['ptero','mosa'],cost:3000,h:8,lv:3,gain:[30,45],hidden:1},
   hellcreek:{short:'Hell Creek',name:'Hell Creek, Montana',pool:['rex'],cost:3500,h:10,lv:3,gain:[28,42]},
 };
 const FINDS=['a partial skull','a femur','a run of vertebrae','fossilised eggshell','a jaw with teeth','a near-complete limb','amber with preserved blood'];
@@ -953,6 +953,33 @@ const upHours=to=>to===2?3:6;
 const lvk=b=>(b.up||1)-1;
 const wsum=arr=>arr.reduce((n,b)=>n+1+.5*lvk(b),0);
 const maxJeeps=b=>MAXJEEPS+2*lvk(b);
+// Habitat research: aviaries and lagoons study their own animals.
+const PROJ={
+  aviary:{
+    ptero_gen:{name:'Pteranodon genome study',cost:2000,h:5,gen:'ptero',gain:[35,50],desc:'Sequence Pteranodon DNA from feathers and eggshell. Repeat until the genome is complete.'},
+    flight:{name:'Flight display training',cost:2500,h:6,needGen:'ptero',desc:'Pteranodons in this aviary draw 30% more hype.'},
+    nest:{name:'Nesting cliffs',cost:3000,h:8,needGen:'ptero',desc:'This aviary holds 8 Pteranodons instead of 6.'},
+    glass:{name:'Toughened dome glass',cost:3500,h:10,desc:'A far stronger dome. Steadies park systems and keeps the flock contained.'},
+  },
+  lagoon:{
+    mosa_gen:{name:'Mosasaurus genome study',cost:3000,h:6,gen:'mosa',gain:[35,50],desc:'Rebuild the Mosasaurus genome from preserved tissue. Repeat until it is complete.'},
+    show:{name:'Feeding show',cost:3000,h:6,needGen:'mosa',desc:'A daily feeding spectacle: this lagoon draws 40% more hype.'},
+    stand:{name:'Grandstand extension',cost:2500,h:5,desc:'More seats around the tank: +80 visitor capacity.'},
+    gate:{name:'Reinforced sea gate',cost:3500,h:8,desc:'Stronger walls and gates. Steadies park systems and keeps the giant in its tank.'},
+  },
+};
+const pDone=(b,id)=>!!(b.done&&b.done[id]);
+const maxPteros=b=>pDone(b,'nest')?8:6;
+function projOpts(b){const P=PROJ[b.type];if(!P)return[];return Object.entries(P).filter(([id,x])=>x.gen?!hasGenome(x.gen):!pDone(b,id));}
+function startProj(b,id){const x=PROJ[b.type]&&PROJ[b.type][id];if(!x||b.proj||S.money<x.cost)return;if(x.needGen&&!hasGenome(x.needGen))return;if(!x.gen&&pDone(b,id))return;
+  S.money-=x.cost;const now=nowMs();b.proj={id,start:now,end:now+x.h*HOUR};log(B[b.type].name+': '+x.name+' started. Ready in '+x.h+' park hours.','good');tone('triangle',400,800,.2,.06);}
+function projTick(){for(const b of bList){if(!b.proj||nowMs()<b.proj.end)continue;const id=b.proj.id,x=PROJ[b.type][id];b.proj=null;
+  if(x.gen){const k=x.gen,before=S.genome[k]||0;S.genome[k]=Math.min(100,before+ri(x.gain[0],x.gain[1]));
+    advEvent('proj-'+id,b.type==='aviary'?'🪶':'🌊',x.name+' finished',D[k].name+' genome '+Math.floor(S.genome[k])+'%.',()=>openB(b));
+    log(x.name+' finished. '+D[k].name+' genome '+Math.floor(S.genome[k])+'%.','good');
+    if(before<100&&S.genome[k]>=100){grantClaim('The '+D[k].name+' is ready.');log(D[k].name+' genome complete! Add one from the Dinosaurs tab.','good');tone('triangle',520,1040,.5,.09);}
+  }else{b.done=Object.assign({},b.done,{[id]:1});advEvent('proj-'+id+b.x,b.type==='aviary'?'🪶':'🌊',x.name+' complete',x.desc,()=>openB(b));log(B[b.type].name+': '+x.name+' complete. '+x.desc,'good');}
+  renderTools();}}
 const lvOf=t=>{const b=listType(t)[0];return b?(b.up||1):1;};
 const resH=T=>Math.max(1,Math.round(T.h*(1-.15*(lvOf('lab')-1))));
 const expH=st=>Math.max(1,Math.round(st.h*(S.tech&&S.tech.fossil?.7:1)*(1-.15*(lvOf('dig')-1))));
@@ -1656,7 +1683,7 @@ const lockLv=t=>UNLOCK[t]||1;
 const unlocked=t=>S.level>=lockLv(t);
 function check(t,x,z){
   if(!unlocked(t))return{ok:false,why:'Unlocks at park rating '+'★'.repeat(lockLv(t))};
-  if(D[t]&&!hasGenome(t))return{ok:false,why:D[t].name+' genome is only '+Math.floor(S.genome[t]||0)+'% complete. Send a fossil expedition from the Dig Site.'};
+  if(D[t]&&!hasGenome(t))return{ok:false,why:D[t].name+' genome is only '+Math.floor(S.genome[t]||0)+'% complete. '+(t==='ptero'?'Research it in an Aviary.':t==='mosa'?'Research it in a Mosasaurus Lagoon.':'Send a fossil expedition from the Dig Site.')};
   if(B[t]&&B[t].b){
     for(const [a,c] of footprint(t,x,z)){const w=baseCheck(a,c,t==='harbor');if(w)return{ok:false,why:bSize(t)>1?'Needs '+bSize(t)+'×'+bSize(t)+' clear ground: '+w.toLowerCase():w};}
     if(B[t].era&&(S.era||0)<B[t].era)return{ok:false,why:'Needs the '+ERAS[B[t].era].name+' era'};
@@ -1677,7 +1704,7 @@ function check(t,x,z){
   if(t==='ptero'||t==='mosa'){
     const c=inB(x,z)&&cells[x][z]; const host=D[t].special;
     if(!c||c.type!==host)return{ok:false,why:t==='ptero'?'Click an Aviary to release a Pteranodon into it':'Click a Mosasaurus Lagoon to add the Mosasaurus'};
-    if(t==='ptero'&&c.pteros.length>=6)return{ok:false,why:'This aviary is full (6 Pteranodons)'};
+    if(t==='ptero'&&c.pteros.length>=maxPteros(c))return{ok:false,why:'This aviary is full ('+maxPteros(c)+' Pteranodons)'};
     if(t==='mosa'&&c.mosa)return{ok:false,why:'This lagoon already has a Mosasaurus'};
     if(S.money<dCost(t))return{ok:false,why:'Not enough funds'};
     return{ok:true,cost:dCost(t),host:c};
@@ -1789,7 +1816,7 @@ function act(t,x,z){
   const c=inB(x,z)?cells[x][z]:null;
   if(B[t]&&B[t].b){
     S.money-=r.cost; placeBuilding(t,x,z); S.dirty=true; tone('triangle',300,420,.08,.05); stat('built',1);
-    const msg={gen:'Generator online. The nearest fences are now live.',visitor:'Visitor Centre open. Run roads from it so guests can reach the paddocks.',lab:'Research Lab staffed. Hybrid splicing unlocked in the Dinosaurs tab.',harbor:'Harbor built. Connect it to your roads and the ferries will start running.',sec:'Security Office staffed. Escaped animals will be recaptured.',aviary:'Aviary complete. Release Pteranodons into it from the Dinosaurs tab.',lagoon:'Lagoon filled. Add a Mosasaurus from the Dinosaurs tab.',tower:'Observation Tower open. Nearby paddocks are more popular.',wonder:'The Titan Dome opens to the world. Crowds flood in from every continent.',tour:'Jeep Tours open. The first jeep is on the road. Click the station to add more.'}[t];
+    const msg={gen:'Generator online. The nearest fences are now live.',visitor:'Visitor Centre open. Run roads from it so guests can reach the paddocks.',lab:'Research Lab staffed. Hybrid splicing unlocked in the Dinosaurs tab.',harbor:'Harbor built. Connect it to your roads and the ferries will start running.',sec:'Security Office staffed. Escaped animals will be recaptured.',aviary:'Aviary complete. Click it to start researching the Pteranodon genome.',lagoon:'Lagoon filled. Click it to start researching the Mosasaurus genome.',tower:'Observation Tower open. Nearby paddocks are more popular.',wonder:'The Titan Dome opens to the world. Crowds flood in from every continent.',tour:'Jeep Tours open. The first jeep is on the road. Click the station to add more.'}[t];
     if(msg)log(msg,'good');
   }else if(t==='ptero'||t==='mosa'){
     S.money-=r.cost; const h=r.host;
@@ -1880,7 +1907,7 @@ function renderTools(){
     b.innerHTML='<b></b><span></span>'; b.firstChild.textContent=toolName(t); b.lastChild.textContent=toolCostLabel(t);
     if((D[t]&&!hasGenome(t))||(B[t]&&B[t].era&&(S.era||0)<B[t].era))b.classList.add('locked');
     b.onclick=()=>{ if(B[t]&&B[t].era&&(S.era||0)<B[t].era){flashHint(B[t].name+' needs the '+ERAS[B[t].era].name+' era. Advance your park from the Visitor Centre.');return;}
-      if(D[t]&&!hasGenome(t)){flashHint(D[t].name+' genome is '+Math.floor(S.genome[t]||0)+'% complete. Build a Fossil Dig Site and send expeditions to find more.');return;}
+      if(D[t]&&!hasGenome(t)){flashHint(D[t].name+' genome is '+Math.floor(S.genome[t]||0)+'% complete. '+(t==='ptero'?'Research it in an Aviary.':t==='mosa'?'Research it in a Mosasaurus Lagoon.':'Build a Fossil Dig Site and send expeditions to find more.'));return;}
       if(!unlocked(t)){flashHint(toolName(t)+' unlocks at park rating '+'★'.repeat(lockLv(t))+'. Grow your peak visitors to '+LEVELS[lockLv(t)-1]+'.');return;}
       if(t==='hybrid'&&!S.pendingHybrid){openLab();return;} selectTool(tool===t?null:t); };
     wrap.appendChild(b);
@@ -1958,7 +1985,7 @@ function rosterH(){
   const list=dinos.filter(d=>d.kind!=='compy'); const out=[];
   for(const d of list){const [st,c]=dinoStatus(d);const tr=traitText(d.traits);const r=regionId[d.homeX]?regionId[d.homeX][d.homeZ]:-1;
     out.push(rowH(escH(d.name),st,(d.hybrid?'Hybrid '+D[d.kind].name+(tr?' · '+tr:''):D[d.kind].name)+' · comfort '+Math.round(d.comfort==null?70:d.comfort)+'%'+(r>=0&&regionSize[r]?' · paddock '+regionSize[r]+' tiles':''),c));}
-  for(const a of listType('aviary'))if(a.pteros.length)out.push(rowH('Pteranodon × '+a.pteros.length,hasAccess(a)?'On show':'No road',(a.pteros.length<6?(6-a.pteros.length)+' more will fit':'Aviary full')+' · hype '+a.pteros.length*D.ptero.hype,hasAccess(a)?'pos':'mid'));
+  for(const a of listType('aviary'))if(a.pteros.length)out.push(rowH('Pteranodon × '+a.pteros.length,hasAccess(a)?'On show':'No road',(a.pteros.length<maxPteros(a)?(maxPteros(a)-a.pteros.length)+' more will fit':'Aviary full')+' · hype '+a.pteros.length*D.ptero.hype,hasAccess(a)?'pos':'mid'));
   for(const l of listType('lagoon'))if(l.mosa)out.push(rowH('Mosasaurus',hasAccess(l)?'On show':'No road','Lagoon star · hype '+D.mosa.hype,hasAccess(l)?'pos':'mid'));
   return out;
 }
@@ -2060,7 +2087,7 @@ function renderInfo(){
         const cur=S.exped; let h2='';
         if(cur){const st=SITES[cur.site],done=clamp((nowMs()-cur.start)/(cur.end-cur.start),0,1);
           h2='<div><div class="row" style="margin-bottom:4px"><span class="label">Team in the field · '+st.name+'</span><span class="num" style="font-size:12px">'+fmtLeft(cur.end)+' left</span></div><div class="meter"><i style="width:'+done*100+'%;background:var(--amber)"></i></div></div>';}
-        const rows=Object.entries(SITES).map(([id,st])=>{const lock=S.level<st.lv, all=st.pool.every(hasGenome), dur=expH(st);
+        const rows=Object.entries(SITES).filter(([id,st])=>!st.hidden).map(([id,st])=>{const lock=S.level<st.lv, all=st.pool.every(hasGenome), dur=expH(st);
           const right=lock?'Rating '+'★'.repeat(st.lv):'<button class="secondary" style="padding:4px 10px" data-act="exp:'+id+'"'+(cur||S.money<st.cost?' disabled':'')+'>'+fmt(st.cost)+' · '+dur+' h</button>';
           return rowH(st.name,right,'Fossils of '+st.pool.map(k=>D[k].name+' ('+Math.floor(S.genome[k]||0)+'%)').join(', ')+' · '+st.gain[0]+'–'+st.gain[1]+'% per trip'+(all?' · genomes complete, finds sell to museums for profit':''),lock?'mid':'');}).join('');
         body=h2+'<div class="ilist">'+rows+'</div><p class="ipara">Each expedition brings back fossils that fill in part of a genome. At 100% you can hatch that species. Times are in park hours, so higher game speeds bring teams home sooner.</p>';
@@ -2079,8 +2106,8 @@ function renderInfo(){
       if(t==='sec')extra.push(['Ranger truck',vehicles.some(v=>v.home===o&&v.placed)?'On patrol':'Needs a road'],['Recaptures',S.recaps||0],['Loose now',dinos.filter(d=>d.escaped).length]);
       else if(t==='gen')extra.push(['Powers','up to '+(genPow()+12*lvk(o))+' sections'],['Grid',S.draw+' / '+S.cap,S.draw>S.cap?'neg':'pos']);
       else if(isFeeder(t)){const rs=feederRegions(o);const n=dinos.filter(d=>!d.escaped&&rs.has(regionId[d.x][d.z])&&(!!D[d.kind].carn===(def.feeder==='meat'))).length;extra.push(['Feeds','up to '+(def.feeds+2*lvk(o))+' '+(def.feeder==='meat'?'predators':'plant-eaters')],['Eating here',rs.size?n:'Not in a paddock',rs.size?'':'neg']);}
-      else if(t==='aviary')extra.push(['Pteranodons',o.pteros.length+' / 6'],['Capacity added','+60']);
-      else if(t==='lagoon')extra.push(['Mosasaurus',o.mosa?'Yes':'Not yet'],['Capacity added','+80']);
+      else if(t==='aviary')extra.push(['Pteranodons',o.pteros.length+' / '+maxPteros(o)],['Pteranodon genome',Math.floor(S.genome.ptero||0)+'%',hasGenome('ptero')?'pos':'mid']);
+      else if(t==='lagoon')extra.push(['Mosasaurus',o.mosa?'Yes':'Not yet'],['Mosasaurus genome',Math.floor(S.genome.mosa||0)+'%',hasGenome('mosa')?'pos':'mid'],['Capacity added','+'+(80+(pDone(o,'stand')?80:0))]);
       else if(t==='hotel')extra.push(['Rooms','150 guests'],['Night guests',S.night?Math.min(S.visitors,listType('hotel').filter(hasAccess).length*150).toLocaleString('en-US'):'—']);
       else if(t==='food')extra.push(['Feeds','about 150 guests']);
       else if(t==='waterpark')extra.push(['Hype','+10'],['Capacity added','+120']);
@@ -2091,6 +2118,14 @@ function renderInfo(){
       body=kvH((needsRoad?[roadKV]:[]).concat(extra))+'<p class="ipara">'+def.desc+'</p>';
       btns+=btnH('sell',infoConfirm==='sell'?'Click again to '+(def.decor?'remove':'demolish'):(def.decor?'Remove':'Demolish'),false)+btnH('close','Close',true);
     }
+  }
+  if(!(o.st&&o.kind)&&PROJ[o.type]&&bList.includes(o)){
+    let rb='<div><div class="label" style="margin-bottom:4px">'+(o.type==='aviary'?'Aviary research':'Lagoon research')+'</div>';
+    if(o.proj){const x=PROJ[o.type][o.proj.id],dn=clamp((nowMs()-o.proj.start)/(o.proj.end-o.proj.start),0,1);rb+='<div class="row" style="margin-bottom:4px"><span style="font-size:12.5px">'+x.name+'</span><span class="num" style="font-size:12px">'+fmtLeft(o.proj.end)+' left</span></div><div class="meter" style="margin-bottom:6px"><i style="width:'+dn*100+'%;background:var(--volt)"></i></div>';}
+    rb+='<div class="ilist">'+Object.entries(PROJ[o.type]).map(([id,x])=>{const done=x.gen?hasGenome(x.gen):pDone(o,id), busy=o.proj&&o.proj.id===id, need=x.needGen&&!hasGenome(x.needGen);
+      const right=done?'Done':busy?'In progress':need?'Needs the '+D[x.needGen].name+' genome':'<button class="secondary" style="padding:4px 10px" data-act="proj:'+id+'"'+(o.proj||S.money<x.cost?' disabled':'')+'>'+fmt(x.cost)+' · '+x.h+' h</button>';
+      return rowH(x.name,right,x.desc+(x.gen?' Genome '+Math.floor(S.genome[x.gen]||0)+'%, '+x.gain[0]+'–'+x.gain[1]+'% per study.':''),done?'pos':need?'mid':'');}).join('')+'</div></div>';
+    body+=rb;
   }
   if(!(o.st&&o.kind)&&UPG.has(o.type)){
     const L=o.up||1, why=upgradeBlock(o);
@@ -2113,6 +2148,7 @@ function infoAct(a){
   if(a==='plaza'){closeInfo();plazaView();return;}
   if(a==='lab'){closeInfo();openLab();return;}
   if(a==='upg'){startUpgrade(o);renderInfo();return;}
+  if(a.startsWith('proj:')){startProj(o,a.slice(5));renderInfo();return;}
   if(a.startsWith('zone:')){const [,id,how]=a.split(':');if(openZone(+id,how)){closeInfo();}else renderInfo();return;}
   if(a==='era'){startEra();renderInfo();return;}
   if(a.startsWith('res:')){const id=a.slice(4),T=TECH[id];if(S.research||S.tech[id]||S.money<T.cost)return;S.money-=T.cost;const now=nowMs();S.research={id,start:now,end:now+resH(T)*HOUR};log('Research started: '+T.name+'. Ready in '+resH(T)+' park hours.','good');tone('triangle',400,800,.2,.06);renderInfo();return;}
@@ -2163,7 +2199,8 @@ function advRules(){
   const lab=listType('lab')[0];
   if(lab&&!S.research&&Object.entries(TECH).some(([id,T])=>!S.tech[id]&&(!T.req||S.tech[T.req])&&S.money>=T.cost))add('lab',50,'🧪','The lab is idle','Start a research project.',()=>openB(lab));
   const dig=listType('dig')[0];
-  if(dig&&!S.exped&&Object.values(SITES).some(x=>S.level>=x.lv&&!x.pool.every(hasGenome)&&S.money>=x.cost))add('dig',52,'🦴','Your dig team is idle','Send an expedition to find new species.',()=>openB(dig));
+  if(dig&&!S.exped&&Object.values(SITES).some(x=>!x.hidden&&S.level>=x.lv&&!x.pool.every(hasGenome)&&S.money>=x.cost))add('dig',52,'🦴','Your dig team is idle','Send an expedition to find new species.',()=>openB(dig));
+  for(const hb of [...listType('aviary'),...listType('lagoon')]){if(!hb.proj&&projOpts(hb).some(([id,x])=>(!x.needGen||hasGenome(x.needGen))&&S.money>=x.cost)){add('hab-'+hb.type,48,hb.type==='aviary'?'🪶':'🌊',(hb.type==='aviary'?'The aviary':'The lagoon')+' research team is idle',hb.type==='aviary'?'Study Pteranodons or improve the dome.':'Study the Mosasaurus or improve the tank.',()=>openB(hb));break;}}
   if(!dig&&S.peak>=25&&unlocked('dig'))add('nodig',45,'🦴','Find new species','Build a Fossil Dig Site and send expeditions.',()=>pickTool('build','dig'));
   if(!dinos.length&&countType('visitor')&&roadConn.size)add('first',44,'🦕','Hatch your first dinosaur','Fence a paddock beside a road, then add a feeder.',()=>pickTool('build','paddock'));
   const ub=bList.filter(b=>UPG.has(b.type)&&!upgradeBlock(b)&&S.money>upCost(b,(b.up||1)+1)*2).sort((a,b)=>B[b.type].cost-B[a.type].cost)[0];
@@ -2485,7 +2522,7 @@ function computeNeeds(){
   S.comfortAvg=n?sum/n:null;
 }
 function techTick(){
-  eraTick();
+  eraTick(); projTick();
   const now=nowMs();
   if(S.research&&now>=S.research.end){const id=S.research.id;S.tech[id]=1;S.research=null;advEvent('res-'+id,'🧪','Research complete: '+TECH[id].name,TECH[id].desc,()=>openB(listType('lab')[0]));log('Research complete: '+TECH[id].name+'. '+TECH[id].desc,'good');tone('triangle',520,1040,.4,.08);S.dirty=true;renderTools();}
   if(S.exped&&now>=S.exped.end){const st=SITES[S.exped.site];S.exped=null;
@@ -2517,15 +2554,15 @@ function econTick(){
     else if(viewable.has(r)){let h=d.st.hype*(.4+.6*(d.comfort==null?70:d.comfort)/100);if(towers.some(t=>Math.max(Math.abs(t.x-d.x),Math.abs(t.z-d.z))<=8+3*lvk(t)))h*=1.25;hype+=h;onDisplay++;}
     if(D[d.kind].carn)danger+=d.st.danger;
   }
-  for(const a of avA)hype+=(6+a.pteros.length*D.ptero.hype)*(1+.3*lvk(a));
-  for(const l of lagA)hype+=(l.mosa?D.mosa.hype:4)*(1+.3*lvk(l));
+  for(const a of avA)hype+=(6+a.pteros.length*D.ptero.hype*(pDone(a,'flight')?1.3:1))*(1+.3*lvk(a));
+  for(const l of lagA)hype+=(l.mosa?D.mosa.hype:4)*(1+.3*lvk(l))*(pDone(l,'show')?1.4:1);
   hype+=waterA*10+towers.length*4+jeeps*5+wonderA*60; if(S.tech.market)hype*=1.15;
   for(const a of listType('aviary'))danger+=a.pteros.length*.6;
   for(const l of listType('lagoon'))if(l.mosa)danger+=1;
   S.hype=hype; S.display=onDisplay;
   const overload=S.draw>S.cap;
   const ratingMul=clamp(1-escaped*.35-(overload?.1:0),.05,1);
-  S.vcap=vc?Math.round((40+harbA*220+(foodA+shopA)*90+hotelA*150+waterA*120+wsum(avA)*60+wsum(lagA)*80+tours.length*40+jeeps*35+wonderA*400)*eraMul('cap')):0;
+  S.vcap=vc?Math.round((40+harbA*220+(foodA+shopA)*90+hotelA*150+waterA*120+wsum(avA)*60+wsum(lagA)*80+lagA.filter(l=>pDone(l,'stand')).length*80+tours.length*40+jeeps*35+wonderA*400)*eraMul('cap')):0;
   let roads=0;for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(cells[x][z]&&cells[x][z].type==='road')roads++;
   computeHappy({foodA,escaped,jeeps,roads,wonderA,attrN:waterA+towers.length+avA.length+lagA.length+tours.length});
   const hm=.7+.6*S.happy/100;
@@ -2555,7 +2592,7 @@ function econTick(){
   if(changed)S.dirty=true;
   let stress=0;for(const d of dinos)if(!d.escaped&&d.comfort!=null&&d.comfort<50)stress+=(50-d.comfort)*.0006*(S.tech.vet?.5:1);
   const g={stress,maint:Math.max(0,MAINT[S.maint].inst),fences:broken*.03,escapes:escaped*.4,power:overload?.15:0,funds:S.money<0?.1:0};
-  let tot=-.04-secs*.03+Math.min(0,MAINT[S.maint].inst);
+  let tot=-.04-secs*.03+Math.min(0,MAINT[S.maint].inst)-.01*bList.filter(b=>pDone(b,'glass')||pDone(b,'gate')).length;
   for(const k in g){tot+=g[k];addF(k,g[k]);}
   S.instability=clamp(S.instability+tot,0,100);
   const k=S.instability/100;
@@ -2622,16 +2659,16 @@ function triggerCollapse(){
   computePower(); rebuildBars();
   for(const p of peeps)peepGroup.remove(p.mesh); peeps.length=0;
   for(const h of listType('harbor'))if(h.ship){if(h.ship.mesh.visible&&h.ship.phase!=='away'){h.ship.phase='out';h.ship.t=0;}else{h.ship.phase='away';h.ship.t=1e9;}}
-  for(const a of listType('aviary')){a.broken=true;const u=a.mesh.userData;u.glass.visible=false;u.dome.rotation.z=.45;u.dome.position.y=-.7;u.dome.scale.y=.6;burst(a.c.clone().add(new THREE.Vector3(0,2,0)),30,1.4);}
+  for(const a of listType('aviary')){if(pDone(a,'glass'))continue;a.broken=true;const u=a.mesh.userData;u.glass.visible=false;u.dome.rotation.z=.45;u.dome.position.y=-.7;u.dome.scale.y=.6;burst(a.c.clone().add(new THREE.Vector3(0,2,0)),30,1.4);}
   log('Main grid failure. '+CAUSETXT[S.causeKey],'alert');
-  if(listType('aviary').some(a=>a.pteros.length))log('The aviary dome has collapsed. Pteranodons are in the air.','alert');
+  if(listType('aviary').some(a=>a.broken&&a.pteros.length))log('The aviary dome has collapsed. Pteranodons are in the air.','alert');
 }
 function collapseUpdate(dt){
   collapseT+=dt; const t=clamp(collapseT/6,0,1);
   applyLight(S.collapseL*(1-t),'build');
   breakT-=dt; if(breakT<=0&&breakQ.length){breakT=.18;const f=breakQ.pop();f.hp=0;thud();S.dirty=true;burst(tileCenter(f.x,f.z).add(new THREE.Vector3(0,1.2,0)),14);}
   beaconMat.color.setHex(Math.sin(collapseT*10)>0?0xff2a1a:0x220404);
-  for(const a of listType('aviary'))for(const p of a.pteros){p.ph+=dt*9;p.mesh.position.y+=dt*3;p.mesh.position.x+=Math.cos(p.ang)*dt*4;p.mesh.position.z+=Math.sin(p.ang)*dt*4;flap(p.mesh,p.ph,.8);}
+  for(const a of listType('aviary'))if(a.broken)for(const p of a.pteros){p.ph+=dt*9;p.mesh.position.y+=dt*3;p.mesh.position.x+=Math.cos(p.ang)*dt*4;p.mesh.position.z+=Math.sin(p.ang)*dt*4;flap(p.mesh,p.ph,.8);}
   const vc=listType('visitor')[0];
   if(vc){const c=tileCenter(vc.x,vc.z);cam.tx=lerp(cam.tx,c.x,dt*.4);cam.tz=lerp(cam.tz,c.z,dt*.4);}
   cam.dist=lerp(cam.dist,30,dt*.35);
@@ -2759,7 +2796,7 @@ function startSurvival(){
   if(S.causeKey==='breakout'){const near=reachT.filter(([x,z])=>{const d=Math.hypot(x-sp[0],z-sp[1]);return d>8&&d<14;});for(const d of dinos)if(d.hybrid||(d.kind==='raptor'&&!dinos.some(o=>o.hybrid))){const s=pick(near.length?near:far);d.pos.copy(tileCenter(s[0],s[1]));}}
   for(const d of dinos){d.state='wander';d.wt=null;d.cd=0;d.target=null;d.sleep=0;
     if(d.traits.camo)d.mesh.userData.mats.forEach(m=>{m.transparent=true;m.opacity=.25;});}
-  for(const a of listType('aviary'))for(const p of a.pteros){flyers.push({mesh:p.mesh,pos:p.mesh.position.clone(),state:'roam',home:a.c.clone(),ang:rand(0,6),ph:p.ph,cd:rand(5,10),hp:45,tq:0,dead:false,downT:0,seenT:-99,homeT:0,name:'Pteranodon'});}
+  for(const a of listType('aviary'))if(a.broken)for(const p of a.pteros){flyers.push({mesh:p.mesh,pos:p.mesh.position.clone(),state:'roam',home:a.c.clone(),ang:rand(0,6),ph:p.ph,cd:rand(5,10),hp:45,tq:0,dead:false,downT:0,seenT:-99,homeT:0,name:'Pteranodon'});}
   // zone timeline
   const spd=S.causeKey==='eruption'?.8:1;
   Z.ph=[[100,50,.62],[80,45,.58],[65,40,.55],[55,35,.5],[45,30,.55]].map(([w,s,r])=>[w*spd,s*spd,r]);
@@ -3561,7 +3598,7 @@ function updateDrops(dt){
     dropLight.intensity=1.6+Math.sin(clockT*6)*.6;}
 }
 function updateLagoonDanger(dt){
-  for(const l of listType('lagoon')){if(!l.mosa)continue;l.lungeCd=(l.lungeCd||0)-dt;
+  for(const l of listType('lagoon')){if(!l.mosa||pDone(l,'gate'))continue;l.lungeCd=(l.lungeCd||0)-dt;
     const dx=Math.max(0,Math.abs(P.pos.x-l.c.x)-3),dz=Math.max(0,Math.abs(P.pos.z-l.c.z)-3);
     if(Math.hypot(dx,dz)<1&&!P.hidden&&l.lungeCd<=0){l.lungeCd=8;l.mosa.jump=.35;hurtEnt(PL,30,{name:'Mosasaurus'});shake(.6,.6);log('Something huge lunged out of the lagoon!','alert');}}
 }
@@ -4035,7 +4072,7 @@ const saveRef=()=>dbApi.collection('data/users/'+uid).doc(docId());
 function serialize(){
   const roads=[],F=[];for(let x=0;x<N;x++)for(let z=0;z<N;z++){const c=cells[x][z];if(c&&c.type==='road')roads.push(key(x,z));}
   for(const f of fList)F.push([f.x,f.z,Math.round(f.hp)]);
-  const Bs=bList.filter(b=>b.type!=='shed').map(b=>{const ex={};if(b.express)ex.x=1;if(b.stock)ex.k=b.stock;if(b.up>1)ex.u=b.up;if(b.upEnd){ex.ue=b.upEnd;ex.ut=b.upTo;}if(b.type==='tour'){ex.j=b.jeeps;ex.t=b.tours||0;}if(b.trips){ex.tr=b.trips;ex.br=b.brought;}if(b.sales){ex.s=Math.round(b.sales);ex.r=Math.round(b.rev);}
+  const Bs=bList.filter(b=>b.type!=='shed').map(b=>{const ex={};if(b.express)ex.x=1;if(b.stock)ex.k=b.stock;if(b.up>1)ex.u=b.up;if(b.upEnd){ex.ue=b.upEnd;ex.ut=b.upTo;}if(b.proj)ex.p=b.proj;if(b.done)ex.d=b.done;if(b.type==='tour'){ex.j=b.jeeps;ex.t=b.tours||0;}if(b.trips){ex.tr=b.trips;ex.br=b.brought;}if(b.sales){ex.s=Math.round(b.sales);ex.r=Math.round(b.rev);}
     const row=[b.type,b.x,b.z,b.pteros?b.pteros.length:0,b.mosa?1:0];if(Object.keys(ex).length)row.push(ex);return row;});
   const Ds=dinos.filter(d=>d.kind!=='compy').map(d=>[d.kind,d.traits,d.hybrid?1:0,d.name,d.x,d.z,d.homeX,d.homeZ]);
   const st={};for(const k of ['money','day','visitors','peak','maint','level','instability','f','hybridCount','pendingHybrid','warned','founded','netRate','happy','recaps','genome','tech','research','exped','expCount','pt','era','eraUp','lastSpeed','zonesOpen','claims'])st[k]=S[k];
@@ -4064,7 +4101,7 @@ function applySave(o){
   for(const k of o.roads){const x=Math.floor(k/N),z=k%N;cells[x][z]={type:'road',x,z};}
   for(const [x,z,hp] of o.F){placeFence(x,z);cells[x][z].hp=hp;}
   for(const [t,x,z,np,mo,ex] of o.B){if(!B[t])continue;const b=placeBuilding(t,x,z);
-    if(ex){if(ex.l){if(t==='harbor')b.express=1;else if(t==='shop')b.stock=ex.l;}if(ex.x)b.express=1;if(ex.k)b.stock=ex.k;if(ex.u)setLevel(b,ex.u,true);if(ex.ue){b.upEnd=ex.ue;b.upTo=ex.ut;addScaffold(b);}if(t==='tour'){b.jeeps=ex.j||1;b.tours=ex.t||0;}if(ex.tr){b.trips=ex.tr;b.brought=ex.br||0;}if(ex.s){b.sales=ex.s;b.rev=ex.r||0;}}
+    if(ex){if(ex.l){if(t==='harbor')b.express=1;else if(t==='shop')b.stock=ex.l;}if(ex.x)b.express=1;if(ex.k)b.stock=ex.k;if(ex.u)setLevel(b,ex.u,true);if(ex.ue){b.upEnd=ex.ue;b.upTo=ex.ut;addScaffold(b);}if(ex.p)b.proj=ex.p;if(ex.d)b.done=ex.d;if(t==='tour'){b.jeeps=ex.j||1;b.tours=ex.t||0;}if(ex.tr){b.trips=ex.tr;b.brought=ex.br||0;}if(ex.s){b.sales=ex.s;b.rev=ex.r||0;}}
     for(let i=0;i<np;i++){const m=makePtero();scene.add(m);b.pteros.push({mesh:m,ang:rand(0,6),r:rand(1,2.2),h:rand(1.4,2.4),ph:rand(0,6)});}
     if(mo){const m=makeMosa();scene.add(m);b.mosa={mesh:m,t:0,next:rand(2,5),jump:-1};}}
   for(const [k,tr,h,n,x,z,hx,hz] of o.D){const d=spawnDino(k,tr||{},!!h,n,x,z);d.homeX=hx;d.homeZ=hz;}
@@ -4249,7 +4286,7 @@ $('legalWipe').onclick=async()=>{
   $('legalMsg').textContent='All game data deleted.'; setTimeout(()=>location.reload(),900);
 };
 renderProfChip();
-window.__eden={advRules,advRender,advEvent,ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
+window.__eden={startProj,projTick,advRules,advRender,advEvent,ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
   readBackups,pushBackup,fbText,techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
