@@ -913,8 +913,8 @@ const B={
   safari:{name:'Night Safari',cost:9000,b:1,size:2,attr:1,era:2,desc:'2×2. Needs a road beside it. Guests stay after dark for floodlit tours: far more visitors and income at night.'},
   mono:{name:'Monorail Station',cost:12000,b:1,size:2,attr:1,era:2,desc:'2×2. Needs a road beside it. +150 capacity. Build two or more and an elevated monorail links them, lifting hype and happiness.'},
   tour:{name:'Jeep Tours',cost:1500,b:1,attr:1,desc:'Tour station. Jeeps drive guests along your roads past the paddocks. Needs a road beside it. Click it to buy more jeeps.'},
-  bench:{name:'Bench',cost:40,b:1,decor:1,ap:1.2,desc:'Somewhere to sit. Bigger crowds need more seating. Click or drag.'},
-  lamp:{name:'Lamp post',cost:60,b:1,decor:1,ap:.8,desc:'Lights the paths so guests feel safe after dark. Click or drag.'},
+  bench:{name:'Bench',cost:40,b:1,decor:1,ap:1.2,desc:'Somewhere to sit. Restaurants and hotels have seating too, so benches only matter for big crowds. Click or drag.'},
+  lamp:{name:'Lamp post',cost:60,b:1,decor:1,ap:.8,desc:'Lights the paths after dark. Restaurants, shops and hotels light their stretch too. Click or drag.'},
   flowers:{name:'Flower bed',cost:50,b:1,decor:1,ap:1.5,desc:'A splash of colour beside the paths. Click or drag.'},
   hedge:{name:'Hedge',cost:30,b:1,decor:1,ap:.7,desc:'Neat topiary. Drag to plant a row.'},
   bin:{name:'Litter bin',cost:35,b:1,decor:1,ap:.4,desc:'Keeps the paths clean. Restaurants, shops, stalls and hotels have bins too, so you only need a few extra for big crowds.'},
@@ -2719,12 +2719,14 @@ function computeHappy(ctx){
   }
   parts.push(['Scenery and decorations',Math.round(25*(1-Math.exp(-score/(6+v/35)))),plaza?plaza+' decoration'+(plaza===1?'':'s')+' around the Visitor Centre plaza (worth 50% more).':'Place decorations beside roads, especially around the Visitor Centre.']);
   if(v>=30){const sup=ctx.foodA*150+foodSt*60;parts.push(['Food and drink',sup>=v?5:-Math.round(Math.min(12,(v-sup)/25)),'Restaurants and snack stalls can feed about '+sup+' guests.']);}
-  if(v>=60){const need=Math.ceil(v/60);parts.push(['Seating',seats>=need?4:-Math.min(8,need-seats),seats+' seats near paths, '+need+' needed (benches and picnic tables).']);}
+  if(v>=150){const builtS=bList.reduce((n,b)=>n+(['food','hotel','visitor'].includes(b.type)?4:B[b.type].stall==='food'?1:0),0), have=seats+builtS, need=Math.ceil(v/150);
+    parts.push(['Seating',have>=need?4:-Math.min(4,need-have),have+' seats ('+seats+' from benches and picnic tables, the rest at restaurants, hotels, food stalls and the Visitor Centre), '+need+' needed.']);}
   if(v>=150){ // restaurants, shops, stalls and hotels empty their own bins; a High maintenance budget adds a cleaning crew
     const built=bList.reduce((n,b)=>n+(['food','hotel','visitor'].includes(b.type)?2:['shop'].includes(b.type)||B[b.type].stall?1:0),0), have=bins+built, need=Math.ceil(v/250);
     if(S.maint==='high')parts.push(['Clean paths',3,'The cleaning crew on the High maintenance budget keeps every path spotless.']);
     else parts.push(['Clean paths',have>=need?3:-Math.min(4,need-have),have+' bins ('+bins+' litter bins, the rest at restaurants, shops, stalls and hotels), '+need+' needed. A High maintenance budget adds a cleaning crew.']);}
-  if(S.night&&v>0){const need=Math.max(1,Math.ceil(ctx.roads/18));parts.push(['Lit paths at night',lamps>=need?3:-6,lamps+' lamp posts, '+need+' needed for your roads.']);}
+  if(S.night&&v>0){const builtL=bList.reduce((n,b)=>n+(['food','hotel','visitor','shop','safari','mono'].includes(b.type)?2:0),0), have=lamps+builtL, need=Math.max(1,Math.ceil(ctx.roads/40));
+    parts.push(['Lit paths at night',have>=need?3:-Math.min(3,need-have),have+' lights ('+lamps+' lamp posts, the rest at lit buildings beside the paths), '+need+' needed for your roads.']);}
   parts.push(['Attractions, tours and stalls',Math.min(14,ctx.attrN*3+ctx.jeeps*2+stalls),'Open attractions, jeeps on tour and stalls all lift the mood.']);
   if(eraMul('happy'))parts.push(['Park era',eraMul('happy'),'Guests love visiting a '+ERAS[S.era].name+'.']);
   if(ctx.monoLine)parts.push(['Monorail',6,'Guests ride the elevated line between stations.']);
