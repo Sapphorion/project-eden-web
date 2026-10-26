@@ -116,6 +116,9 @@ body.survival.bigmap #mm{width:min(70vh,86vw);height:min(70vh,86vw)}
 .trait{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:5px;padding:8px;cursor:pointer;font-size:12.5px;color:var(--muted);text-align:left;background:none}
 .trait input{accent-color:var(--amber);margin-top:2px}
 .trait b{display:block;color:var(--text);font-size:13px}
+.obj{margin:4px 0 8px}.obj .row{gap:8px}.obj b{font-weight:600;color:var(--text);font-size:12.5px}.obj small{display:block;color:var(--muted);font-size:11px;line-height:1.35;margin-top:3px}
+#buffList small{display:block;font-size:11px;color:var(--muted);line-height:1.4}
+#evO .trait{flex-direction:column;gap:2px}
 .trait:has(input:checked){border-color:var(--amber);background:#221f12}
 button.trait:hover{border-color:var(--amber);background:#221f12}
 .genome{display:flex;gap:8px}
@@ -404,6 +407,10 @@ body.compact .rephead b{display:none}
   <details id="ops" class="panel" open>
     <summary class="label">Control room</summary>
     <div class="opsbody">
+      <div class="label">Board objectives</div>
+      <div id="objList"></div>
+      <div id="buffList"></div>
+      <label class="row" style="cursor:pointer;margin-bottom:6px"><span>Allow breeding</span><input type="checkbox" id="breedT" checked style="accent-color:var(--volt)"></label>
       <div class="row"><span class="label">Maintenance</span><span class="num" id="maintCost" style="font-size:11px;color:var(--muted)"></span></div>
       <div class="seg" role="group" aria-label="Maintenance budget">
         <button data-m="low" id="mLow">Low</button><button data-m="standard" id="mStd">Standard</button><button data-m="high" id="mHigh">High</button>
@@ -687,6 +694,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   </div>
 </div>
 
+<div class="overlay" id="evO" hidden>
+  <div class="card" role="dialog" aria-labelledby="evH">
+    <span class="label" id="evK">Park decision</span>
+    <h2 id="evH"></h2>
+    <p id="evP"></p>
+    <div class="traits" id="evOpts"></div>
+  </div>
+</div>
+
 <div class="overlay" id="perkO" hidden>
   <div class="card">
     <span class="label">Level up</span>
@@ -864,7 +880,7 @@ function genWorldData(avoid){for(let i=0;i<10;i++){const l=genIsland();if(l>1800
 genWorldData();
 
 // ================= definitions =================
-const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.20 (12 Oct 2026)';
+const GENPOW=24, DAYLEN=56, DAYPART=38, GAME_VERSION='0.21 (26 Oct 2026)';
 // The park runs on its own clock. At 1x one park day takes 20 real minutes (72 park seconds per real second).
 const DAYMS=86400000, TSCALE=72, HOUR=3600000;
 function nowMs(){return S.pt||0;}
@@ -893,6 +909,9 @@ const B={
   mfeed:{name:'Meat feeder',cost:250,b:1,feeder:'meat',feeds:3,desc:'Place inside a paddock. Feeds up to 3 predators.'},
   dig:{name:'Fossil Dig Site',cost:600,b:1,unique:1,desc:'Send fossil expeditions around the world. Complete a genome to hatch a new species. Click it to plan an expedition.'},
   wonder:{name:'Titan Dome',cost:40000,b:1,size:3,attr:1,unique:1,era:3,desc:'A wonder of the modern world: a golden dome over a living rainforest. Enormous hype and capacity. Needs a road beside it.'},
+  outpost:{name:'Field Station',cost:5000,b:1,era:1,desc:'Build inside a newly opened island region, one per region. Each station makes lab research and fossil expeditions 10% faster and expeditions bring back 10% more.'},
+  safari:{name:'Night Safari',cost:9000,b:1,size:2,attr:1,era:2,desc:'2×2. Needs a road beside it. Guests stay after dark for floodlit tours: far more visitors and income at night.'},
+  mono:{name:'Monorail Station',cost:12000,b:1,size:2,attr:1,era:2,desc:'2×2. Needs a road beside it. +150 capacity. Build two or more and an elevated monorail links them, lifting hype and happiness.'},
   tour:{name:'Jeep Tours',cost:1500,b:1,attr:1,desc:'Tour station. Jeeps drive guests along your roads past the paddocks. Needs a road beside it. Click it to buy more jeeps.'},
   bench:{name:'Bench',cost:40,b:1,decor:1,ap:1.2,desc:'Somewhere to sit. Bigger crowds need more seating. Click or drag.'},
   lamp:{name:'Lamp post',cost:60,b:1,decor:1,ap:.8,desc:'Lights the paths so guests feel safe after dark. Click or drag.'},
@@ -981,8 +1000,8 @@ function projTick(){for(const b of bList){if(!b.proj||nowMs()<b.proj.end)continu
   }else{b.done=Object.assign({},b.done,{[id]:1});advEvent('proj-'+id+b.x,b.type==='aviary'?'🪶':'🌊',x.name+' complete',x.desc,()=>openB(b));log(B[b.type].name+': '+x.name+' complete. '+x.desc,'good');}
   renderTools();}}
 const lvOf=t=>{const b=listType(t)[0];return b?(b.up||1):1;};
-const resH=T=>Math.max(1,Math.round(T.h*(1-.15*(lvOf('lab')-1))));
-const expH=st=>Math.max(1,Math.round(st.h*(S.tech&&S.tech.fossil?.7:1)*(1-.15*(lvOf('dig')-1))));
+const resH=T=>Math.max(1,Math.round(T.h*(1-.15*(lvOf('lab')-1))*(1-.1*outpostN())));
+const expH=st=>Math.max(1,Math.round(st.h*(S.tech&&S.tech.fossil?.7:1)*(1-.15*(lvOf('dig')-1))*(1-.1*outpostN())));
 const fenceMul=()=>S.tech&&S.tech.fence2?.6:1;
 const MAXJEEPS=4, JEEPCOST=1200;
 const bSize=t=>(B[t]&&B[t].size)||1;
@@ -1291,6 +1310,28 @@ function makeBuilding(type){
     for(const [x,y,z,r] of sl){const b=box(.9,.12,.45,mat(0x2f8fd0),x,y,z);b.rotation.set(0,-Math.PI/4,-r);g.add(b);}
     for(const [x,z,c] of [[1.4,-1.3,0xe8553f],[.5,-1.4,0x72d4e4],[1.4,-.4,0xf0b240]]){g.add(cyl(.03,.03,1,mat(0xdddddd),x,.5,z,5));const u=new THREE.Mesh(new THREE.ConeGeometry(.45,.25,8),mat(c));u.position.set(x,1.05,z);g.add(u);}
     beacon(g,2.4);
+  }else if(type==='outpost'){
+    g.add(box(1.5,.9,1.2,mat(0xd8d0bb),0,.45,0)); g.add(box(1.6,.1,1.3,mat(0x2e6a58),0,.95,0));
+    g.add(box(.5,.5,.05,winMat,-.3,.5,.62)); g.add(cyl(.03,.03,1.6,mat(0x9a9d97),.55,1.75,-.4,5));
+    const dish=new THREE.Mesh(new THREE.SphereGeometry(.32,10,6,0,Math.PI*2,0,Math.PI/2.4),mat(0xece4d4));dish.rotation.x=-1.0;dish.position.set(.55,2.5,-.4);g.add(dish);
+    for(const x of[-.85,.85])g.add(box(.3,.3,.3,mat(0x7a5c3c),x,.15,.5));
+    beacon(g,2.9);
+  }else if(type==='safari'){
+    g.add(box(3.7,.08,3.7,mat(0x6b5a3c),0,.04,0));
+    g.add(box(2.4,1.0,1.4,mat(0x5a4330),-.4,.5,-.9)); g.add(box(2.6,.12,1.6,mat(0x3d6b2e),-.4,1.05,-.9));
+    g.add(box(1.0,.3,.05,mat(0x86c86f,{emissive:0x2a5a1a,emissiveIntensity:.6}),-.4,.85,-.17));
+    for(const [x,z] of [[1.5,1.5],[-1.5,1.5],[1.5,-1.5]]){g.add(cyl(.05,.06,2.6,mat(0x444841),x,1.3,z,5));const l=box(.4,.2,.3,mat(0xfff2c0,{emissive:0xffe08a,emissiveIntensity:.8}),x,2.6,z);g.add(l);}
+    const jeep=box(.9,.4,.5,mat(0x3d6b2e),.6,.3,.7);g.add(jeep);g.add(box(.5,.25,.48,winMat,.5,.6,.7));
+    for(const [x,z] of [[-1.2,1.0],[1.3,-.3]]){g.add(cyl(.08,.1,1.0,mat(0x5a4330),x,.5,z,5));const c=new THREE.Mesh(new THREE.IcosahedronGeometry(.45,0),mat(0x3d6b2e));c.position.set(x,1.2,z);g.add(c);}
+    beacon(g,3.0);
+  }else if(type==='mono'){
+    g.add(box(3.6,.3,2.2,mat(0xd8d0bb),0,.15,0));
+    for(const [x,z] of [[-1.5,-.9],[1.5,-.9],[-1.5,.9],[1.5,.9]])g.add(cyl(.12,.14,3.6,mat(0x9a9d97),x,1.95,z,6));
+    g.add(box(3.8,.2,2.4,mat(0xece4d4),0,3.8,0)); g.add(box(3.6,.08,1.0,mat(0x5a5e56),0,3.4,0));
+    g.add(box(3.6,1.2,.06,new THREE.MeshStandardMaterial({color:0xbfe0e8,transparent:true,opacity:.4,roughness:.1}),0,4.4,-.9));
+    const roof=box(4.0,.15,2.6,mat(0x2e6a58),0,5.1,0);g.add(roof);
+    g.add(box(1.0,1.4,.6,mat(0xece4d4),1.0,.85,.9)); g.add(box(1.4,.3,.05,mat(0xf0b240,{emissive:0x553300,emissiveIntensity:.5}),-.6,.7,1.11));
+    beacon(g,5.6);
   }else if(type==='tower'){
     for(const [x,z] of [[-.45,-.45],[.45,-.45],[-.45,.45],[.45,.45]]){const l=cyl(.06,.09,4.4,mat(0x6a6e66),x*.8,2.2,z*.8,6);l.rotation.set(z*.06,0,-x*.06);g.add(l);}
     for(const y of [1.2,2.4,3.4])g.add(box(.9,.06,.9,mat(0x5a5e56),0,y,0));
@@ -1599,7 +1640,7 @@ function computeRoads(){
 function hasAccess(b){if(b.type==='visitor')return roadConn.size>0;for(const [x,z] of b.tiles)for(const [dx,dz] of DIRS){if(roadConn.has(key(x+dx,z+dz)))return true;}return false;}
 function runningGens(){return listType('gen').filter(g=>S.phase==='survival'?g.on:!S.collapsed);}
 function computePower(){
-  const gens=runningGens(); S.cap=gens.reduce((n,g)=>n+genPow()+12*lvk(g),0);
+  const gens=runningGens(); S.cap=gens.reduce((n,g)=>n+genPow()+12*lvk(g),0)+(gens.length?bAdd('power'):0);
   const fs=fList.filter(f=>f.hp>0);
   for(const f of fs){f.gd=1e9;for(const g of gens)f.gd=Math.min(f.gd,Math.abs(g.x-f.x)+Math.abs(g.z-f.z));}
   fs.sort((a,b)=>a.gd-b.gd);
@@ -1690,6 +1731,7 @@ function check(t,x,z){
     if(B[t].unique&&countType(t))return{ok:false,why:'You can only have one '+B[t].name};
     if(B[t].decor){const r=regionId[x]?regionId[x][z]:-1;if(isEnclosure(r))return{ok:false,why:'Decorations go in public areas, not inside paddocks'};
       if(B[t].stall&&!adjRoad(x,z))return{ok:false,why:'Stalls need a road beside them that joins the Visitor Centre'};}
+    if(t==='outpost'){const zk=zoneOf[x*N+z];if(zk<0)return{ok:false,why:'Field Stations go in a newly opened island region'};if(bList.some(b=>b.type==='outpost'&&zoneOf[b.x*N+b.z]===zk))return{ok:false,why:'This region already has a Field Station'};}
     if(isFeeder(t)){const r=regionId[x]?regionId[x][z]:-1;if(!isEnclosure(r))return{ok:false,why:'Feeders go inside a closed paddock'};}
     if(t==='harbor'&&!waterDir(x,z))return{ok:false,why:'A harbor needs open sea right in front of it'};
     const cost=B[t].cost+footprint(t,x,z).reduce((s,[a,c])=>s+clearCost(a,c),0);
@@ -1806,7 +1848,7 @@ function eraTick(){
   for(const b of bList)if(b.upEnd&&nowMs()>=b.upEnd){setLevel(b,b.upTo);b.upEnd=null;b.upTo=null;if(b.scaf){scene.remove(b.scaf);b.scaf=null;}log(B[b.type].name+' upgraded to Level '+b.up+'.','good');advEvent('upd-'+b.x+'_'+b.z,'⬆️',B[b.type].name+' reached Level '+b.up,UPEFF[b.type]+'.',()=>openB(b));tone('triangle',500,750,.15,.05);}
   const nx=(S.era||0)+1; if(ERAS[nx]&&!S.eraUp&&!S.warned['era'+nx]&&eraReady()){S.warned['era'+nx]=1;log('Your park is ready to advance to the '+ERAS[nx].name+' era. Open the Visitor Centre to begin.','good');}
 }
-const STRAIN={wonder:8,gen:1,visitor:1,harbor:2,food:.5,shop:.5,hotel:2,sec:0,lab:4,waterpark:2,tower:.5,aviary:5,lagoon:6,tour:1,galli:1,para:1,stego:2,trike:3,brachio:4,dilo:6,raptor:8,rex:14,ptero:4,mosa:10};
+const STRAIN={outpost:2,safari:4,mono:3,wonder:8,gen:1,visitor:1,harbor:2,food:.5,shop:.5,hotel:2,sec:0,lab:4,waterpark:2,tower:.5,aviary:5,lagoon:6,tour:1,galli:1,para:1,stego:2,trike:3,brachio:4,dilo:6,raptor:8,rex:14,ptero:4,mosa:10};
 function addStrain(v){if(v<=0)return;const before=S.instability;S.instability=clamp(S.instability+v,0,100);
   if(before<35&&S.instability>=35)log('Park systems are under strain from all the new construction. Give it time, build a Security Office or raise maintenance.','warn');
   if(before<65&&S.instability>=65)log('Engineers warn the park is badly overstretched. Something could give at night.','alert');}
@@ -1816,7 +1858,7 @@ function act(t,x,z){
   const c=inB(x,z)?cells[x][z]:null;
   if(B[t]&&B[t].b){
     S.money-=r.cost; placeBuilding(t,x,z); S.dirty=true; tone('triangle',300,420,.08,.05); stat('built',1);
-    const msg={gen:'Generator online. The nearest fences are now live.',visitor:'Visitor Centre open. Run roads from it so guests can reach the paddocks.',lab:'Research Lab staffed. Hybrid splicing unlocked in the Dinosaurs tab.',harbor:'Harbor built. Connect it to your roads and the ferries will start running.',sec:'Security Office staffed. Escaped animals will be recaptured.',aviary:'Aviary complete. Click it to start researching the Pteranodon genome.',lagoon:'Lagoon filled. Click it to start researching the Mosasaurus genome.',tower:'Observation Tower open. Nearby paddocks are more popular.',wonder:'The Titan Dome opens to the world. Crowds flood in from every continent.',tour:'Jeep Tours open. The first jeep is on the road. Click the station to add more.'}[t];
+    const msg={gen:'Generator online. The nearest fences are now live.',visitor:'Visitor Centre open. Run roads from it so guests can reach the paddocks.',lab:'Research Lab staffed. Hybrid splicing unlocked in the Dinosaurs tab.',harbor:'Harbor built. Connect it to your roads and the ferries will start running.',sec:'Security Office staffed. Escaped animals will be recaptured.',aviary:'Aviary complete. Click it to start researching the Pteranodon genome.',lagoon:'Lagoon filled. Click it to start researching the Mosasaurus genome.',tower:'Observation Tower open. Nearby paddocks are more popular.',wonder:'The Titan Dome opens to the world. Crowds flood in from every continent.',outpost:'Field Station staffed. Research and expeditions speed up.',safari:'Night Safari open. Guests will stay after dark for the floodlit tours.',mono:'Monorail Station open.'+(countType('mono')>=2?' The line between stations is running.':' Build a second station to start the line.'),tour:'Jeep Tours open. The first jeep is on the road. Click the station to add more.'}[t];
     if(msg)log(msg,'good');
   }else if(t==='ptero'||t==='mosa'){
     S.money-=r.cost; const h=r.host;
@@ -1888,7 +1930,7 @@ function ghostSet(list){let n=0;for(const [x,z,c] of list){if(n>=900||!inB(x,z))
   ghost.count=n;ghost.instanceMatrix.needsUpdate=true;if(ghost.instanceColor)ghost.instanceColor.needsUpdate=true;}
 
 // ================= tools UI =================
-const TABS={build:['paddock','fence','road','gen','visitor','harbor','food','shop','dig','sec','lab','bulldoze'],attr:['tour','waterpark','tower','hotel','aviary','lagoon','wonder'],
+const TABS={build:['paddock','fence','road','gen','visitor','harbor','food','shop','dig','sec','lab','outpost','bulldoze'],attr:['tour','waterpark','tower','hotel','aviary','lagoon','safari','mono','wonder'],
   decor:['plaza','bench','lamp','flowers','hedge','bin','picnic','icecream','hotdog','balloon','souvenir','fountain','statue','bulldoze'],dinos:['hfeed','mfeed','galli','para','stego','trike','raptor','dilo','brachio','rex','ptero','mosa','hybrid'],ops:['repair','tranq','bulldoze']};
 const TOOLNAME={bulldoze:'Demolish',repair:'Repair fence',tranq:'Tranquilize',hybrid:'Hybrid'};
 const TOOLDESC={bulldoze:'Remove a structure (50% refund), sell a dinosaur or clear jungle ($30). Click or drag.',repair:'Restore a damaged fence section. Click or drag.',tranq:'Send a team to return an escaped dinosaur to its paddock. $500.',
@@ -2197,6 +2239,7 @@ function advRules(){
   const ready=Object.keys(D).filter(k=>k!=='compy'&&!START_GENOMES[k]&&hasGenome(k)&&!dinos.some(d=>d.kind===k)&&!(k==='ptero'&&listType('aviary').some(a=>a.pteros.length))&&!(k==='mosa'&&listType('lagoon').some(l=>l.mosa)));
   if(ready.length&&unlocked(ready[0]))add('hatch-'+ready[0],66,'🦖','Ready to hatch: '+D[ready[0]].name,'Its genome is complete.',()=>pickTool('dinos',ready[0]));
   const lab=listType('lab')[0];
+  for(const o of (S.obj||[]))if(o.due-nowMs()<8*HOUR)add('objdue-'+o.id,62,'🎯','Objective ending soon: '+o.title,fmtPark(o.due-nowMs())+' left · reward '+o.reward.label+'.',()=>{$('ops').open=true;});
   if(lab&&!S.research&&Object.entries(TECH).some(([id,T])=>!S.tech[id]&&(!T.req||S.tech[T.req])&&S.money>=T.cost))add('lab',50,'🧪','The lab is idle','Start a research project.',()=>openB(lab));
   const dig=listType('dig')[0];
   if(dig&&!S.exped&&Object.values(SITES).some(x=>!x.hidden&&S.level>=x.lv&&!x.pool.every(hasGenome)&&S.money>=x.cost))add('dig',52,'🦴','Your dig team is idle','Send an expedition to find new species.',()=>openB(dig));
@@ -2253,6 +2296,207 @@ function advRender(force){
   if(fresh&&!force)tone('triangle',freshUrgent?660:880,freshUrgent?440:1175,.12,.035);
 }
 
+// ================= mid-game: timed effects, board objectives, decisions, breeding =================
+// ---------- timed effects from decisions and rewards ----------
+function addBuff(k,v,hours,label){S.buffs=(S.buffs||[]).filter(b=>!(b.k===k&&b.label===label));S.buffs.push({k,v,until:nowMs()+hours*HOUR,label});}
+const liveBuffs=()=>(S.buffs||[]).filter(b=>b.until>nowMs());
+const bMul=k=>liveBuffs().filter(b=>b.k===k).reduce((m,b)=>m*b.v,1);
+const bAdd=k=>liveBuffs().filter(b=>b.k===k).reduce((m,b)=>m+b.v,0);
+const buffOn=k=>liveBuffs().some(b=>b.k===k);
+
+// ---------- board objectives ----------
+const kindCount=k=>dinos.filter(d=>d.kind===k&&!d.dead).length;
+const onShowKinds=()=>new Set(dinos.filter(d=>!d.escaped&&viewable.has(regionId[d.x][d.z])).map(d=>d.kind));
+const anyPaddock=()=>regionPublic.some((p,i)=>!p&&regionSize[i]>=8);
+const roundTo=(v,s)=>Math.max(s,Math.round(v/s)*s);
+const OBJ={
+  visitors:{ok:()=>countType('visitor'),make:()=>{const t=roundTo(Math.max(S.peak+60,S.peak*1.35),10);return{title:'Reach '+t+' visitors',target:t,days:2};},prog:o=>S.visitors},
+  rating:{ok:()=>S.level<5,make:()=>({title:'Reach park rating '+'★'.repeat(S.level+1),desc:'Peak visitors '+LEVELS[S.level]+'.',target:LEVELS[S.level],days:3}),prog:o=>S.peak},
+  hatch:{ok:()=>anyPaddock()&&OBJ.hatch.pickKind(),pickKind:()=>{const ks=Object.keys(D).filter(k=>k!=='compy'&&!D[k].special&&hasGenome(k)&&unlocked(k));return ks.length?pick(ks):null;},
+    make:()=>{const k=OBJ.hatch.pickKind();return{title:'Have '+(kindCount(k)+2)+' '+D[k].name+(kindCount(k)+2>1?'s':''),desc:'Hatch them or let a happy herd breed.',target:kindCount(k)+2,kind:k,days:2};},prog:o=>kindCount(o.kind)},
+  happy:{ok:()=>S.visitors>30,make:()=>({title:'Keep happiness at 70% for 6 hours',desc:'Six park hours in a row at 70% or more.',target:6,days:1.5,acc:0}),prog:o=>Math.floor((o.acc||0)/HOUR)},
+  bank:{ok:()=>true,make:()=>{const t=roundTo(S.money+Math.max(8000,(S.netRate||0)*1200*1.3),1000);return{title:'Bank '+fmt(t),desc:'Have that much in funds at once.',target:t,days:2};},prog:o=>Math.floor(S.money)},
+  upgrades:{ok:()=>(S.era||0)>=1&&bList.some(b=>UPG.has(b.type)),make:()=>{const n=bList.filter(b=>(b.up||1)>=2).length+2;return{title:'Get '+n+' buildings to Level 2',target:n,days:2.5};},prog:o=>bList.filter(b=>(b.up||1)>=2).length},
+  build:{ok:()=>OBJ.build.pickType(),pickType:()=>{const ts=['hotel','waterpark','tower','tour','harbor','sec','safari','mono','outpost','dig','lab'].filter(t=>unlocked(t)&&!(B[t].era&&(S.era||0)<B[t].era)&&countType(t)===0&&(t!=='outpost'||(S.zonesOpen||[]).length));return ts.length?pick(ts):null;},
+    make:()=>{const t=OBJ.build.pickType();return{title:'Open a '+B[t].name,target:1,type:t,days:2};},prog:o=>bList.filter(b=>b.type===o.type&&(hasAccess(b)||['outpost','dig','lab','sec'].includes(b.type))).length},
+  comfort:{ok:()=>dinos.length>=2&&S.comfortAvg!=null&&S.comfortAvg<80,make:()=>({title:'Raise animal comfort to 80%',desc:'Feeders, space, the right herd sizes.',target:80,days:2}),prog:o=>Math.floor(S.comfortAvg||0)},
+  species:{ok:()=>Object.keys(D).some(k=>k!=='compy'&&!D[k].special&&hasGenome(k)&&!onShowKinds().has(k)),make:()=>{const n=onShowKinds().size+1;return{title:'Show '+n+' different species',target:n,days:2.5};},prog:o=>onShowKinds().size},
+  noesc:{ok:()=>dinos.some(d=>D[d.kind].carn&&d.kind!=='compy'),make:()=>({title:'No escapes for a full day',desc:'Keep every animal contained for 24 park hours.',target:24,days:2,acc:0}),prog:o=>Math.floor((o.acc||0)/HOUR)},
+  expedition:{ok:()=>countType('dig')&&Object.values(SITES).some(x=>!x.hidden&&S.level>=x.lv&&!x.pool.every(hasGenome)),make:()=>({title:'Bring home 2 expeditions',target:2,base:S.expCount||0,days:2.5}),prog:o=>(S.expCount||0)-o.base},
+  research:{ok:()=>countType('lab')&&Object.keys(TECH).some(k=>!S.tech[k]),make:()=>({title:'Finish a research project',target:1,base:Object.keys(S.tech).length,days:2}),prog:o=>Object.keys(S.tech).length-o.base},
+  region:{ok:()=>(S.zonesOpen||[]).length<ZONES.length&&(S.claims>0||S.money>zoneCost()*.6),make:()=>({title:'Open a new island region',target:1,base:(S.zonesOpen||[]).length,days:2.5}),prog:o=>(S.zonesOpen||[]).length-o.base},
+  babies:{ok:()=>S.breed!==false&&dinos.some(d=>BREED[d.kind]&&!d.hybrid&&kindCount(d.kind)>=2),make:()=>({title:'Raise 2 baby dinosaurs',desc:'Happy herds of 2 or more breed.',target:2,base:S.born||0,days:3}),prog:o=>(S.born||0)-o.base},
+  scenery:{ok:()=>S.visitors>20,make:()=>({title:'Scenery score of +15',desc:'Decorate beside roads, especially the plaza.',target:15,days:2}),prog:o=>{const p=(S.happyParts||[]).find(x=>x[0]==='Scenery and decorations');return p?p[1]:0;}},
+};
+function objReward(){
+  const r=Math.random(), cash=roundTo(2500+S.day*700+S.peak*4,500);
+  const inc=Object.keys(D).filter(k=>k!=='compy'&&!hasGenome(k));
+  if(r<.12&&(S.zonesOpen||[]).length+(S.claims||0)<ZONES.length)return{kind:'claim',label:'a land claim'};
+  if(r<.3&&inc.length)return{kind:'genome',sp:pick(inc),label:'+30% genome'};
+  if(r<.45)return{kind:'hype',label:'+25% hype for a day'};
+  return{kind:'cash',amt:cash,label:fmt(cash)};
+}
+function giveReward(w){
+  if(w.kind==='cash')S.money+=w.amt;
+  else if(w.kind==='claim')grantClaim('The board is impressed.');
+  else if(w.kind==='genome'){const k=hasGenome(w.sp)?Object.keys(D).find(k=>k!=='compy'&&!hasGenome(k)):w.sp;if(k){const b=S.genome[k]||0;S.genome[k]=Math.min(100,b+30);if(b<100&&S.genome[k]>=100)log(D[k].name+' genome complete!','good');renderTools();}else S.money+=5000;}
+  else if(w.kind==='hype')addBuff('hype',1.25,24,'Board publicity');
+}
+function newObjective(){
+  const used=new Set((S.obj||[]).map(o=>o.t)), ids=shuffle(Object.keys(OBJ).filter(k=>!used.has(k)&&OBJ[k].ok()));
+  if(!ids.length)return null; const t=ids[0], m=OBJ[t].make(); if(!m)return null;
+  if(OBJ[t].prog(Object.assign({t},m))>=m.target)return null;
+  return Object.assign({t,id:'o'+Date.now().toString(36)+Math.floor(Math.random()*999),due:nowMs()+m.days*DAYMS,reward:objReward()},m);
+}
+function objTick(){
+  if(!S.obj)S.obj=[];
+  S.buffs=liveBuffs(); const pw=buffOn('power'); if(pw!==!!S._pw){S._pw=pw;S.dirty=true;}
+  const step=1000*TSCALE;
+  for(const o of S.obj.slice()){
+    if(o.t==='happy')o.acc=S.happy>=70?(o.acc||0)+step:0;
+    if(o.t==='noesc')o.acc=dinos.some(d=>d.escaped)?0:(o.acc||0)+step;
+    const p=OBJ[o.t]?OBJ[o.t].prog(o):0; o.p=p;
+    if(p>=o.target){S.obj=S.obj.filter(x=>x!==o);giveReward(o.reward);S.objDone=(S.objDone||0)+1;stat('objectives',1);
+      log('Board objective complete: '+o.title+'. Reward: '+o.reward.label+'.','good');tone('triangle',523,1046,.4,.08);
+      advEvent('obj-'+o.id,'🎯','Objective complete: '+o.title,'Reward: '+o.reward.label+'.',()=>{$('ops').open=true;});S.objNext=nowMs()+HOUR;}
+    else if(nowMs()>o.due){S.obj=S.obj.filter(x=>x!==o);log('Board objective missed: '+o.title+'. The board will set a new one.','warn');S.objNext=nowMs()+2*HOUR;}
+  }
+  if(S.obj.length<3&&nowMs()>=(S.objNext||0)&&countType('visitor')){const o=newObjective();if(o){S.obj.push(o);log('New board objective: '+o.title+'. Reward: '+o.reward.label+'.','good');}S.objNext=nowMs()+HOUR*.5;}
+}
+let objSig='';
+function renderObjectives(){
+  const el=$('objList'); if(!el)return;
+  const L=S.obj||[];
+  const html=L.length?L.map(o=>{const p=clamp((o.p||0)/o.target,0,1),left=o.due-nowMs();
+    return '<div class="obj"><div class="row"><b>'+escH(o.title)+'</b><span class="num">'+fmtShort(o.p||0,o)+' / '+fmtShort(o.target,o)+'</span></div><div class="bar thin"><i style="width:'+Math.round(p*100)+'%;background:var(--volt)"></i></div><small>'+(o.desc?escH(o.desc)+' ':'')+'Reward: '+o.reward.label+' · '+(left<DAYMS/2?'<span style="color:var(--amber)">':'<span>')+fmtPark(left)+' left</span></small></div>';}).join('')
+    :'<small style="color:var(--muted)">The board will set new objectives soon.</small>';
+  if(html!==objSig){objSig=html;el.innerHTML=html;}
+}
+function fmtShort(v,o){return o.t==='bank'?fmt(v):String(Math.max(0,Math.round(v)));}
+
+// ---------- decisions (Total War style dilemmas) ----------
+const EVENTS={
+  film:{cond:()=>dinos.some(d=>D[d.kind].carn&&viewable.has(regionId[d.x][d.z])),title:'A film crew at the gate',
+    text:()=>'A studio wants to shoot a monster movie beside your predator paddocks. They pay well and the publicity would be huge, but the lights and crowds will rattle the animals.',
+    opts:[['Let them film','+$5,000 · +25% hype for a day · more system strain',()=>{S.money+=5000;addBuff('hype',1.25,24,'Film buzz');S.instability+=4;}],['Keep them away from the animals','No effect',()=>{}]]},
+  investor:{cond:()=>true,title:'An investor calls',
+    text:()=>'A venture fund offers a large cash injection now, in return for a share of ticket income for the next three days.',
+    opts:[['Take the money','+$15,000 now · −10% income for 3 days',()=>{S.money+=15000;addBuff('inc',.9,72,'Investor share');}],['Decline','No effect',()=>{}]]},
+  storm:{cond:()=>fList.length>0,title:'Storm warning',
+    text:()=>'The weather service says a squall line will cross the island within hours. You could close early and tie everything down, or keep the gates open and hope it misses.',
+    opts:[['Close the park early','No visitors for 6 hours · fences protected',()=>{addBuff('closed',1,6,'Closed for storm');log('Gates closed. The storm passes with little damage.','good');}],['Stay open','Keep earning · good chance the storm hits',()=>{if(Math.random()<.6)storm();else log('The storm swings out to sea. Lucky.','good');}]]},
+  celebrity:{cond:()=>S.visitors>50,title:'A celebrity is visiting',
+    text:()=>'A famous actor is coming with a camera crew of their own. VIP treatment costs money, and if guests are unhappy the coverage could backfire.',
+    opts:[['Roll out the VIP treatment','−$2,000 · big hype boost if happiness is 60%+, bad press if not',()=>{S.money-=2000;if(S.happy>=60){addBuff('hype',1.3,24,'Celebrity buzz');log('The celebrity loved it. Their photos are everywhere.','good');}else{addBuff('happy',-8,24,'Bad press');log('The celebrity complained about the park. Ouch.','warn');}}],['Treat them like anyone else','Small hype boost if happiness is 70%+',()=>{if(S.happy>=70)addBuff('hype',1.1,24,'Celebrity mention');}]]},
+  vet:{cond:()=>dinos.length>=3,title:'Your head vet has an offer',
+    text:()=>'A rival park is trying to poach your head vet. Keeping them will cost a retention bonus.',
+    opts:[['Pay the bonus','−$4,000',()=>{S.money-=4000;}],['Let them go','Animal comfort −12 for 2 days',()=>{addBuff('comfort',-12,48,'Short-staffed vets');}]]},
+  school:{cond:()=>countType('visitor')&&S.visitors>20,title:'School trip request',
+    text:()=>'Three schools from the mainland want a discounted field trip. Lots of extra guests, but less money per head.',
+    opts:[['Host them at a discount','+120 capacity, −15% income and +5 happiness for a day',()=>{addBuff('vcap',120,24,'School trip');addBuff('inc',.85,24,'School discount');addBuff('happy',5,24,'School trip');}],['Not today','No effect',()=>{}]]},
+  fossils:{cond:()=>Object.keys(D).some(k=>k!=='compy'&&!hasGenome(k)),title:'A fossil dealer',
+    text:()=>{const k=EVENTS.fossils.k=pick(Object.keys(D).filter(k=>k!=='compy'&&!hasGenome(k)));return 'A private collector offers '+D[k].name+' fossils of uncertain origin. Expensive, but it would save an expedition.';},
+    opts:[['Buy the fossils','−$4,000 · +30% genome',()=>{S.money-=4000;const k=EVENTS.fossils.k;S.genome[k]=Math.min(100,(S.genome[k]||0)+30);log(D[k].name+' genome now '+Math.floor(S.genome[k])+'%.','good');if(S.genome[k]>=100)grantClaim('The '+D[k].name+' is ready.');renderTools();}],['Too risky','No effect',()=>{}]]},
+  grid:{cond:()=>countType('gen')>0,title:'Power company contract',
+    text:()=>'The mainland power company offers to run an undersea cable for a few days while they test it.',
+    opts:[['Sign the contract','−$3,000 · +24 powered fence sections for 3 days',()=>{S.money-=3000;addBuff('power',24,72,'Undersea cable');S.dirty=true;}],['Decline','No effect',()=>{}]]},
+  inspect:{cond:()=>dinos.length>=2,title:'Animal welfare inspection',
+    text:()=>'Inspectors arrive tomorrow. Preparing properly costs money. Winging it is free, if your animals are comfortable.',
+    opts:[['Prepare properly','−$2,500 · pass for sure, +3 happiness for a day',()=>{S.money-=2500;addBuff('happy',3,24,'Passed inspection');}],['Wing it','Free if comfort is 60%+, a $5,000 fine if not',()=>{if((S.comfortAvg||0)>=60){log('The inspectors were impressed.','good');addBuff('happy',3,24,'Passed inspection');}else{S.money-=5000;addBuff('happy',-6,24,'Failed inspection');log('Failed the inspection. Fined $5,000.','warn');}}]]},
+  food:{cond:()=>countType('food')>0,title:'Food scare',
+    text:()=>'A handful of guests fell ill after eating at one of your restaurants. You can refund everyone and deep-clean, or keep quiet.',
+    opts:[['Close and refund','−$1,500',()=>{S.money-=1500;}],['Hush it up','Half the time it gets out: −15 happiness for a day',()=>{if(Math.random()<.5){addBuff('happy',-15,24,'Food scare');log('The story got out. Guests are nervous about eating here.','warn');}}]]},
+  press:{cond:()=>S.instability>30,title:'Journalists are asking questions',
+    text:()=>'Reporters have heard rumours about faults in the park systems.',
+    opts:[['Open the doors','+15% hype for a day · a little more strain',()=>{addBuff('hype',1.15,24,'Open-door coverage');S.instability+=3;}],['No comment','−10% hype for a day',()=>{addBuff('hype',.9,24,'Bad headlines');}]]},
+  grant:{cond:()=>S.happy>=60&&countType('lab'),title:'A science grant',
+    text:()=>'A university offers a research grant in exchange for access to your lab.',
+    opts:[['Speed up research','Finishes the current lab project now (or +$6,000)',()=>{if(S.research)S.research.end=nowMs();else S.money+=6000;}],['Take the cash','+$5,000',()=>{S.money+=5000;}]]},
+  buyer:{cond:()=>dinos.some(d=>!d.hybrid&&!d.baby&&d.kind!=='compy'),title:'An offer for one of your animals',
+    text:()=>{const d=EVENTS.buyer.d=pick(dinos.filter(d=>!d.hybrid&&!d.baby&&d.kind!=='compy'));return 'A zoo overseas wants to buy your '+d.name+' for well over its value.';},
+    opts:[['Sell it','+'+'150% of its hatch cost · the animal leaves',()=>{const d=EVENTS.buyer.d;if(d&&dinos.includes(d)){S.money+=Math.round(D[d.kind].cost*1.5);removeDino(d);log(d.name+' sold to an overseas zoo.','good');}}],['Not for sale','No effect',()=>{}]]},
+};
+let evOpen=null, evPrev=1;
+function evTick(){
+  if(S.phase!=='build'||S.day<2||evOpen||!$('infoO').hidden||!$('menuO').hidden)return;
+  if(!S.evNext){S.evNext=nowMs()+rand(6,10)*HOUR;return;}
+  if(nowMs()<S.evNext)return;
+  const ids=shuffle(Object.keys(EVENTS).filter(k=>k!==S.evLast&&EVENTS[k].cond()));
+  S.evNext=nowMs()+rand(8,14)*HOUR; if(!ids.length)return;
+  showEvent(ids[0]);
+}
+function showEvent(id){
+  const E=EVENTS[id]; evOpen=id; S.evLast=id; evPrev=S.speed||S.lastSpeed||1; S.speed=0; syncSpeed();
+  $('evK').textContent='Park decision · Day '+S.day; $('evH').textContent=E.title; $('evP').textContent=E.text();
+  const L=$('evOpts'); L.innerHTML='';
+  E.opts.forEach(([label,hint,fn])=>{const b=document.createElement('button');b.className='trait';b.innerHTML='<span><b></b></span>';b.querySelector('b').textContent=label;b.firstChild.appendChild(document.createTextNode(hint));
+    b.onclick=()=>{try{fn();}catch(e){console.error(e);}$('evO').hidden=true;evOpen=null;S.speed=evPrev;syncSpeed();tone('triangle',440,660,.12,.05);log(E.title+': '+label+'.');};L.appendChild(b);});
+  $('evO').hidden=false; tone('triangle',330,495,.3,.06);
+}
+
+// ---------- breeding ----------
+const BREED={galli:14,para:14,stego:22,trike:22,brachio:36,raptor:18,dilo:20,rex:40};
+const GROW=36*HOUR;
+function babyScale(d){return d.baby?.45+.55*Math.min(1,(d.age||0)/GROW):1;}
+function breedTick(regs){
+  const step=1000*TSCALE;
+  for(const d of dinos){if(!d.baby)continue;d.age=(d.age||0)+step;d.mesh.scale.setScalar(d.st.size*babyScale(d));
+    if(d.age>=GROW){d.baby=false;d.name=d.name.replace(/^Young /,'');d.mesh.scale.setScalar(d.st.size);log(d.name+' is fully grown.','good');}}
+  if(S.breed===false){return;}
+  S.breedT=S.breedT||{};
+  for(const {r,L,space} of regs){
+    const kinds=new Set(L.map(d=>d.kind));
+    for(const k of kinds){
+      if(!BREED[k])continue;
+      const adults=L.filter(d=>d.kind===k&&!d.baby&&!d.hybrid), herd=L.filter(d=>d.kind===k).length, key=r+':'+k;
+      const hi=(SOCIAL[k]||[1,4])[1], avg=adults.reduce((s,d)=>s+(d.comfort||0),0)/Math.max(1,adults.length);
+      if(adults.length<2||avg<72||space<1||herd>=Math.max(2,hi)){S.breedT[key]=0;continue;}
+      S.breedT[key]=(S.breedT[key]||0)+step;
+      if(S.breedT[key]>=BREED[k]*HOUR){S.breedT[key]=0;
+        const tiles=[];for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(regionId[x][z]===r&&!cells[x][z]&&!dinoAt(x,z))tiles.push([x,z]);
+        if(!tiles.length)continue; const [x,z]=pick(tiles), par=adults[0];
+        const d=spawnDino(k,{},false,'Young '+D[k].name,x,z); d.baby=true; d.age=0; d.homeX=par.homeX; d.homeZ=par.homeZ; d.mesh.scale.setScalar(d.st.size*babyScale(d));
+        S.born=(S.born||0)+1; stat('born',1);
+        log('A baby '+D[k].name+' has hatched in the paddock! Guests love it.','good'); tone('triangle',880,1320,.25,.06);
+        advEvent('born-'+d.id,'🥚','Baby '+D[k].name+' hatched','Babies draw extra hype. Herds that outgrow the paddock get stressed.',()=>{flyTo(d.pos);openInfo(d);});
+      }
+    }
+  }
+}
+
+// ---------- monorail ----------
+let monoSig='', monoTrack=null, monoTrain=null, monoPath=[], monoLen=0, monoT=0, monoDir=1;
+function syncMono(){
+  const st=bList.filter(b=>b.type==='mono'), sig=st.map(b=>b.x+','+b.z).join('|');
+  if(sig===monoSig)return; monoSig=sig;
+  if(monoTrack){scene.remove(monoTrack);monoTrack=null;} if(monoTrain){scene.remove(monoTrain);monoTrain=null;}
+  monoPath=[];monoLen=0; if(st.length<2)return;
+  // order stations into a chain: start at one end, then nearest unvisited
+  const left=st.slice(); let cur=left.reduce((a,b)=>a.c.x+a.c.z<b.c.x+b.c.z?a:b); left.splice(left.indexOf(cur),1); const ord=[cur];
+  while(left.length){let bi=0,bd=1e9;left.forEach((b,i)=>{const d=b.c.distanceTo(cur.c);if(d<bd){bd=d;bi=i;}});cur=left.splice(bi,1)[0];ord.push(cur);}
+  const g=new THREE.Group(), beamM=mat(0xd8d0bb), pylM=mat(0x8a8d86);
+  let topY=0; for(const b of ord)topY=Math.max(topY,b.c.y);
+  for(let i=0;i<ord.length-1;i++){const a=ord[i].c,b=ord[i+1].c,len=a.distanceTo(b);
+    for(let s=0;s<=len;s+=5){const p=a.clone().lerp(b,s/len),gy=tileY(clamp(Math.floor(p.x/T+N/2),0,N-1),clamp(Math.floor(p.z/T+N/2),0,N-1));topY=Math.max(topY,gy);}}
+  const Y=topY+4.2;
+  for(let i=0;i<ord.length-1;i++){const a=ord[i].c,b=ord[i+1].c,len=a.distanceTo(b);
+    const beam=box(len,.3,.5,beamM,0,0,0); beam.position.set((a.x+b.x)/2,Y,(a.z+b.z)/2); beam.rotation.y=Math.atan2(-(b.z-a.z),b.x-a.x); g.add(beam);
+    for(let s=4;s<len-2;s+=7){const p=a.clone().lerp(b,s/len),gy=Math.max(WATERY,tileY(clamp(Math.floor(p.x/T+N/2),0,N-1),clamp(Math.floor(p.z/T+N/2),0,N-1)));g.add(cyl(.18,.24,Y-gy,pylM,p.x,gy+(Y-gy)/2,p.z,6));}
+    monoPath.push({a:new THREE.Vector3(a.x,Y+.55,a.z),b:new THREE.Vector3(b.x,Y+.55,b.z),len,from:monoLen});monoLen+=len;}
+  for(const b of ord)g.add(cyl(.3,.4,Y-b.c.y,pylM,b.c.x,b.c.y+(Y-b.c.y)/2,b.c.z,8));
+  scene.add(g); monoTrack=g;
+  const tr=new THREE.Group(); for(let k=0;k<3;k++){tr.add(box(1.9,.7,.8,mat(k===0?0xf0b240:0xece4d4),-k*2.05,0,0));tr.add(box(1.6,.22,.82,winMat,-k*2.05,.12,0));}
+  tr.children.forEach(m=>m.position.x+=2); scene.add(tr); monoTrain=tr; monoT=0; monoDir=1;
+}
+function monoStep(dt){
+  if(!monoTrain||!monoLen)return;
+  monoT+=monoDir*dt*7; if(monoT>monoLen){monoT=monoLen;monoDir=-1;} if(monoT<0){monoT=0;monoDir=1;}
+  const seg=monoPath.find(s=>monoT<=s.from+s.len)||monoPath[monoPath.length-1];
+  const f=clamp((monoT-seg.from)/seg.len,0,1); monoTrain.position.copy(seg.a).lerp(seg.b,f);
+  monoTrain.rotation.y=Math.atan2(-(seg.b.z-seg.a.z),seg.b.x-seg.a.x)+(monoDir<0?Math.PI:0);
+}
+function outpostN(){return Math.min(4,countType('outpost'));}
+
 // ================= camera & input =================
 const cam={tx:0,tz:0,yaw:.65,dist:80,pitch:.95};
 function camHome(){const ox=N/2-(VOL.x-N/2)*.35,oz=N/2-(VOL.z-N/2)*.35;cam.tx=(ox-N/2)*T;cam.tz=(oz-N/2)*T;cam.dist=80;}
@@ -2276,7 +2520,7 @@ window.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return; const k=e.key.toLowerCase();
   if(e.repeat&&k.length===1&&'exfhgrtclvm123456'.includes(k))return; keys[k]=true;
   if(k==='escape'){if(!$('legalO').hidden){$('legalClose').click();return;}if(!$('fbO').hidden){$('fbO').hidden=true;return;}if(!$('bakO').hidden){$('bakO').hidden=true;return;}if(!$('infoO').hidden){closeInfo();return;}if(!$('briefO').hidden){$('briefGo').click();return;}if(!$('profO').hidden){if(!$('profCancel').hidden)$('profCancel').click();return;}if(!$('menuO').hidden)closeMenu();else if(!$('lab').hidden)$('lab').hidden=true;else if(!$('perkO').hidden){}else if(tool)selectTool(null);else openMenu();}
-  if(S.phase==='build'&&!S.paused&&$('infoO').hidden){if(k===' ')setSpeed(S.speed?0:(S.lastSpeed||1));else if(k==='1'||k==='2'||k==='3')setSpeed([1,2,4][+k-1]);}
+  if(S.phase==='build'&&!S.paused&&$('infoO').hidden&&$('evO').hidden){if(k===' ')setSpeed(S.speed?0:(S.lastSpeed||1));else if(k==='1'||k==='2'||k==='3')setSpeed([1,2,4][+k-1]);}
   if(S.phase==='survival'&&!S.paused){
     if(k==='e')interact(); if(k==='x')toggleHide(); if(k==='f')eat(); if(k==='h')heal(); if(k==='g')throwFlare(); if(k==='r')reload(); if(k==='v')drink();
     if(k==='c')P.crouch=!P.crouch; if(k==='l')P.light=!P.light; if(k==='m')document.body.classList.toggle('bigmap');
@@ -2480,6 +2724,8 @@ function computeHappy(ctx){
   if(S.night&&v>0){const need=Math.max(1,Math.ceil(ctx.roads/18));parts.push(['Lit paths at night',lamps>=need?3:-6,lamps+' lamp posts, '+need+' needed for your roads.']);}
   parts.push(['Attractions, tours and stalls',Math.min(14,ctx.attrN*3+ctx.jeeps*2+stalls),'Open attractions, jeeps on tour and stalls all lift the mood.']);
   if(eraMul('happy'))parts.push(['Park era',eraMul('happy'),'Guests love visiting a '+ERAS[S.era].name+'.']);
+  if(ctx.monoLine)parts.push(['Monorail',6,'Guests ride the elevated line between stations.']);
+  for(const b of liveBuffs())if(b.k==='happy')parts.push([b.label,b.v,'A temporary effect from a park decision ('+fmtPark(b.until-nowMs())+' left).']);
   if(ctx.wonderA)parts.push(['A wonder of the world',6,'The Titan Dome draws gasps from every guest.']);
   if(S.vcap>0&&v>S.vcap*.92)parts.push(['Overcrowding',-8,'The park is nearly full. Add capacity.']);
   if(ctx.escaped)parts.push(['Escaped animals',-Math.min(40,ctx.escaped*15),'Guests are terrified. Recapture them fast.']);
@@ -2493,12 +2739,12 @@ function computeNeeds(){
   const R=new Map(); const get=r=>{if(!R.has(r))R.set(r,{list:[],herb:0,meat:0});return R.get(r);};
   for(const d of dinos){if(d.kind==='compy'||d.escaped)continue;const r=regionId[d.x][d.z];if(!isEnclosure(r))continue;get(r).list.push(d);}
   for(const b of bList){const f=B[b.type].feeder;if(!f)continue;const rs=feederRegions(b);for(const r of rs)get(r)[f]+=(B[b.type].feeds+2*lvk(b))/rs.size;}
-  let sum=0,n=0;
+  let sum=0,n=0; const regsOut=[];
   for(const [r,g] of R){
     const L=g.list; if(!L.length)continue;
     const herbN=L.filter(d=>!D[d.kind].carn).length, carnN=L.length-herbN;
-    const mins=L.map(d=>D[d.kind].minRegion*(d.traits.size?1.4:1)), mx=Math.max(...mins), need=mx+(mins.reduce((a,b)=>a+b,0)-mx)*.5;
-    const space=regionSize[r]/need, carnKinds=new Set(L.filter(d=>D[d.kind].carn).map(d=>d.kind));
+    const mins=L.map(d=>D[d.kind].minRegion*(d.traits.size?1.4:1)*(d.baby?.5:1)), mx=Math.max(...mins), need=mx+(mins.reduce((a,b)=>a+b,0)-mx)*.5;
+    const space=regionSize[r]/need; regsOut.push({r,L,space}); const carnKinds=new Set(L.filter(d=>D[d.kind].carn).map(d=>d.kind));
     for(const d of L){
       const carn=D[d.kind].carn, nd=[]; let c=100;
       const sup=carn?g.meat:g.herb, dem=carn?carnN:herbN, fed=dem?Math.min(1,sup/dem):1;
@@ -2513,13 +2759,14 @@ function computeNeeds(){
       if(!carn&&carnN){c-=35;nd.push(['Safety',-35,'Shares a paddock with predators.']);}
       else if(carn&&[...carnKinds].some(k=>k!==d.kind)){c-=15;nd.push(['Rivals',-15,'Rival predator species in the same paddock.']);}
       if(S.tech.condition){c+=10;nd.push(['Conditioning',10,'Lab research keeps it calm.']);}
+      {const cb=bAdd('comfort');if(cb){c+=cb;nd.push([liveBuffs().find(b=>b.k==='comfort').label,cb,'A temporary effect from a park decision.']);}}
       c=clamp(c,0,100); d.comfortT=c; d.comfort=d.comfort==null?c:d.comfort+(c-d.comfort)*.1; d.needs=nd;
       if(d.comfort<40&&!d.stressLog){d.stressLog=true;const worst=nd.filter(x=>x[1]<0).sort((a,b)=>a[1]-b[1])[0];log(d.name+' is stressed'+(worst?': '+worst[2].charAt(0).toLowerCase()+worst[2].slice(1):'.'),carn?'alert':'warn');}
       if(d.comfort>55)d.stressLog=false;
       sum+=d.comfort;n++;
     }
   }
-  S.comfortAvg=n?sum/n:null;
+  S.comfortAvg=n?sum/n:null; return regsOut;
 }
 function techTick(){
   eraTick(); projTick();
@@ -2529,17 +2776,17 @@ function techTick(){
     const open=st.pool.filter(k=>!hasGenome(k));
     if(!open.length){const v=Math.round(st.cost*1.4);S.money+=v;log('Expedition back from '+st.name+'. The genomes there are already complete, so the fossils were sold to a museum for '+fmt(v)+'.','good');renderTools();return;}
     const k=pick(open);
-    const gain=Math.round(ri(st.gain[0],st.gain[1])*(S.tech.fossil?1.5:1)*(1+.15*(lvOf('dig')-1))), before=S.genome[k]||0; S.genome[k]=Math.min(100,before+gain); S.expCount=(S.expCount||0)+1;
+    const gain=Math.round(ri(st.gain[0],st.gain[1])*(S.tech.fossil?1.5:1)*(1+.15*(lvOf('dig')-1))*(1+.1*outpostN())), before=S.genome[k]||0; S.genome[k]=Math.min(100,before+gain); S.expCount=(S.expCount||0)+1;
     advEvent('exp','🦴','Expedition back from '+st.short,D[k].name+' genome '+Math.min(100,Math.floor(S.genome[k]+0))+'%.',()=>openB(listType('dig')[0]));
     log('Expedition back from '+st.name+' with '+pick(FINDS)+'. '+D[k].name+' genome '+Math.floor(S.genome[k])+'%.','good');
     if(before<100&&S.genome[k]>=100){grantClaim('The '+D[k].name+' needs room to roam.');log(D[k].name+' genome complete! You can now hatch '+D[k].name+(k==='mosa'?' in a lagoon':k==='ptero'?' in an aviary':'')+'.','good');tone('triangle',520,1040,.5,.09);}
     renderTools();}
 }
 function econTick(){
-  techTick(); computeNeeds();
+  techTick(); const regs=computeNeeds(); breedTick(regs); syncMono();
   const gens=countType('gen');
   const acc=t=>bList.filter(b=>b.type===t&&hasAccess(b));
-  const foodA=wsum(acc('food')), shopA=wsum(acc('shop')), harbA=wsum(acc('harbor')), hotelA=wsum(acc('hotel')), waterA=wsum(acc('waterpark')), wonderA=acc('wonder').length;
+  const foodA=wsum(acc('food')), shopA=wsum(acc('shop')), harbA=wsum(acc('harbor')), hotelA=wsum(acc('hotel')), waterA=wsum(acc('waterpark')), wonderA=acc('wonder').length, safA=wsum(acc('safari')), monoA=acc('mono'), monoN=monoA.length, monoLine=monoN>=2;
   const avA=acc('aviary'), lagA=acc('lagoon'), towers=acc('tower'), tours=acc('tour'); const jeeps=tours.reduce((n,b)=>n+b.jeeps,0);
   syncVehicles();
   const vc=countType('visitor'); const secs=Math.min(3,wsum(listType('sec')));
@@ -2556,33 +2803,35 @@ function econTick(){
   }
   for(const a of avA)hype+=(6+a.pteros.length*D.ptero.hype*(pDone(a,'flight')?1.3:1))*(1+.3*lvk(a));
   for(const l of lagA)hype+=(l.mosa?D.mosa.hype:4)*(1+.3*lvk(l))*(pDone(l,'show')?1.4:1);
-  hype+=waterA*10+towers.length*4+jeeps*5+wonderA*60; if(S.tech.market)hype*=1.15;
+  for(const d of dinos)if(d.baby&&!d.escaped&&viewable.has(regionId[d.x][d.z]))hype+=d.st.hype*.3;
+  hype+=waterA*10+towers.length*4+jeeps*5+wonderA*60+(S.night?safA*30:safA*8)+(monoLine?monoN*12:0); if(S.tech.market)hype*=1.15; hype*=bMul('hype');
   for(const a of listType('aviary'))danger+=a.pteros.length*.6;
   for(const l of listType('lagoon'))if(l.mosa)danger+=1;
   S.hype=hype; S.display=onDisplay;
   const overload=S.draw>S.cap;
   const ratingMul=clamp(1-escaped*.35-(overload?.1:0),.05,1);
-  S.vcap=vc?Math.round((40+harbA*220+(foodA+shopA)*90+hotelA*150+waterA*120+wsum(avA)*60+wsum(lagA)*80+lagA.filter(l=>pDone(l,'stand')).length*80+tours.length*40+jeeps*35+wonderA*400)*eraMul('cap')):0;
+  S.vcap=vc?Math.round((40+harbA*220+(foodA+shopA)*90+hotelA*150+waterA*120+wsum(avA)*60+wsum(lagA)*80+lagA.filter(l=>pDone(l,'stand')).length*80+tours.length*40+jeeps*35+wonderA*400+safA*100+monoN*150+bAdd('vcap'))*eraMul('cap')):0;
   let roads=0;for(let x=0;x<N;x++)for(let z=0;z<N;z++)if(cells[x][z]&&cells[x][z].type==='road')roads++;
-  computeHappy({foodA,escaped,jeeps,roads,wonderA,attrN:waterA+towers.length+avA.length+lagA.length+tours.length});
+  computeHappy({foodA,escaped,jeeps,roads,wonderA,monoLine,attrN:waterA+towers.length+avA.length+lagA.length+tours.length+acc('safari').length+monoN});
   const hm=.7+.6*S.happy/100;
   S.vtarget=Math.round(Math.min(hype*18*hm,S.vcap)*ratingMul);
-  if(S.night)S.vtarget=Math.min(S.vtarget,hotelA*150+Math.round(S.vtarget*.5));
+  if(S.night)S.vtarget=Math.min(S.vtarget,hotelA*150+safA*220+Math.round(S.vtarget*.5));
+  if(buffOn('closed'))S.vtarget=0;
   const base=Math.min(S.vtarget,120);
   if(S.visitors<base)S.visitors=Math.min(base,S.visitors+3);
   else if(S.visitors>S.vtarget)S.visitors=Math.max(S.vtarget,S.visitors-Math.max(1,Math.ceil(S.visitors*(S.night?.06:.04))));
   S.peak=Math.max(S.peak,S.visitors);
   const lv=LEVELS.filter(v=>S.peak>=v).length;
   if(lv>S.level){S.level=lv;const nu=Object.keys(UNLOCK).filter(k=>UNLOCK[k]===lv).map(toolName);advEvent('rating','⭐','Park rating '+'★'.repeat(lv),'Unlocked: '+nu.join(', ')+'.',()=>setTab('attr'));log('Park rating up to '+'★'.repeat(lv)+'. Unlocked: '+nu.join(', ')+'.','good');tone('triangle',520,1040,.4,.08);renderTools();}
-  const nm=S.night?.7:1, hmI=.8+.4*S.happy/100;
+  const nm=S.night?Math.min(1,.7+.12*safA):1, hmI=.8+.4*S.happy/100;
   let shopRev=0;
   for(const sh of acc('shop').slice(0,4)){const r=nm*hmI*S.visitors*.018*(1+.35*(sh.stock||0))*(1+.25*((sh.up||1)-1));sh.rev+=r;sh.sales+=r/14;shopRev+=r;}
   for(const k of acc('souvenir').slice(0,6)){const r=nm*hmI*S.visitors*.006;k.rev+=r;k.sales+=r/8;shopRev+=r;}
   const stallN=Math.min(8,bList.filter(b=>B[b.type].stall&&B[b.type].stall!=='shop'&&adjRoad(b.x,b.z)).length);
-  let income=nm*hmI*S.visitors*(.12+Math.min(foodA,4)*.02+Math.min(hotelA,3)*.03+Math.min(waterA,3)*.012+stallN*.005+Math.min(jeeps,8)*.008+wonderA*.04)+shopRev; S.incBase=income; income*=eraMul('inc');
+  let income=nm*hmI*S.visitors*(.12+Math.min(foodA,4)*.02+Math.min(hotelA,3)*.03+Math.min(waterA,3)*.012+stallN*.005+Math.min(jeeps,8)*.008+wonderA*.04)+shopRev; S.incBase=income; income*=eraMul('inc')*bMul('inc');
   S.income=income;
   const upkeep=gens*.6+fList.length*MAINT[S.maint].cost+dinos.length*.35+(countType('lab')?1.2:0)+countType('sec')*.8+countType('harbor')*.7+roads*.01
-    +countType('hotel')*.8+countType('waterpark')*.6+countType('tower')*.2+listType('aviary').reduce((s,a)=>s+.9+a.pteros.length*.2,0)+countType('lagoon')*1.2
+    +countType('hotel')*.8+countType('outpost')*1.5+countType('safari')*1.6+countType('mono')*2.2+countType('waterpark')*.6+countType('tower')*.2+listType('aviary').reduce((s,a)=>s+.9+a.pteros.length*.2,0)+countType('lagoon')*1.2
     +bList.reduce((s,b)=>s+(b.decor?(B[b.type].stall?.04:.01):b.type==='tour'?.5+b.jeeps*.15:b.type==='wonder'?4:0)+lvk(b)*.25,0);
   S.upkeep=upkeep;
   stat('earned',Math.max(0,income));stat('playtime',1);stat('daysBest',S.day,'max');stat('peakBest',S.peak,'max');
@@ -2602,6 +2851,7 @@ function econTick(){
   if(k>.25&&Math.random()<k*.004)tremor();
   S.statusT-=1; if(S.statusT<=0){S.statusT=3;const v=S.instability+rand(-6,6);S.statusS=v<20?0:v<40?1:v<62?2:3;}
   if(S.money<0&&Math.random()<.05)log('Funds are negative. Corners are being cut across the park.','warn');
+  objTick(); evTick();
 }
 function newDay(){
   if(S.phase==='build'){log('Day '+S.day+' at Isla Verde.'+(S.day>=S.minDay?' The park is old enough now that anything could go wrong.':''));saveGame(true);}
@@ -3130,7 +3380,7 @@ function finishReload(){const w=WEAP[P.cur],st=P.weap[P.cur];const n=Math.min(ma
 function aimDir(){const cp=Math.cos(P.pitch);return new THREE.Vector3(-Math.sin(P.yaw)*cp,-Math.sin(P.pitch),-Math.cos(P.yaw)*cp);}
 function muzzlePos(){const f=new THREE.Vector3(-Math.sin(P.yaw),0,-Math.cos(P.yaw)),r=new THREE.Vector3(Math.cos(P.yaw),0,-Math.sin(P.yaw));return P.pos.clone().add(new THREE.Vector3(0,P.crouch?.75:1.05,0)).addScaledVector(f,.55).addScaledVector(r,.25);}
 function raySphere(o,d,c,r){const ox=o.x-c.x,oy=o.y-c.y,oz=o.z-c.z;const b=ox*d.x+oy*d.y+oz*d.z;const cc=ox*ox+oy*oy+oz*oz-r*r;const h=b*b-cc;if(h<0)return null;const t=-b-Math.sqrt(h);return t>0?t:null;}
-const BLDH={wonder:3,hotel:3.2,visitor:1.9,sec:1,lab:1.2,food:1,shop:1.1,shed:1,gen:1,harbor:.9,waterpark:.2,tower:0,aviary:0,lagoon:.7};
+const BLDH={outpost:1.2,safari:1,mono:1.4,wonder:3,hotel:3.2,visitor:1.9,sec:1,lab:1.2,food:1,shop:1.1,shed:1,gen:1,harbor:.9,waterpark:.2,tower:0,aviary:0,lagoon:.7};
 function shotTargets(){
   const out=[];
   for(const d of dinos){if(d.dead)continue;const s=d.mesh.scale.x;out.push({t:'dino',e:d,c:d.pos.clone().add(new THREE.Vector3(0,d.mesh.userData.baseY*s*(1-d.sleep*.6)*.9,0)),r:HITR[d.kind]*(s/D[d.kind].size)});}
@@ -3770,7 +4020,7 @@ $('newIsland').onclick=()=>location.reload();
 const mm=$('mm'), mctx=mm.getContext('2d'), MS=192, MP=MS/N;
 const mmBase=document.createElement('canvas'); mmBase.width=mmBase.height=MS;
 const MCOL={[WATER]:'#235e69',[SAND]:'#d6c48e',[GRASS]:'#6c9047',[JUNGLE]:'#3e6a2a',[ROCK]:'#7d6e5e',[LAVA]:'#ff6a2a'};
-const BCOL={wonder:'#f0d070',harbor:'#f0b240',aviary:'#b88ad8',lagoon:'#3d8ab0',waterpark:'#72d4e4',hotel:'#e0c9a0',tower:'#c0c0b0'};
+const BCOL={outpost:'#86c86f',safari:'#5a7a3a',mono:'#ece4d4',wonder:'#f0d070',harbor:'#f0b240',aviary:'#b88ad8',lagoon:'#3d8ab0',waterpark:'#72d4e4',hotel:'#e0c9a0',tower:'#c0c0b0'};
 function drawBase(){const g=mmBase.getContext('2d');for(let x=0;x<N;x++)for(let z=0;z<N;z++){if(S.phase!=='survival'&&isLocked(x,z)&&tt[x][z]!==WATER){g.fillStyle=(x+z)%2?'#3a4636':'#33402f';g.fillRect(x*MP,z*MP,MP,MP);continue;}let c=MCOL[tt[x][z]];if(tt[x][z]===JUNGLE&&!hasVeg(x,z))c='#5d803e';if(tt[x][z]===ROCK&&tMax[x*N+z]>4)c='#5a524c';if(tt[x][z]===WATER&&tMin[x*N+z]>-1)c='#2f7a86';g.fillStyle=c;g.fillRect(x*MP,z*MP,MP,MP);}}
 function drawMinimap(){
   if(mmDirty){drawBase();mmDirty=false;}
@@ -3839,7 +4089,12 @@ function renderBuilderHud(){
     ['Open a harbor for ferries',listType('harbor').some(hasAccess)],['Advance to the Safari Park era',(S.era||0)>=1],['Decorate the Visitor Centre plaza',(S.happyParts||[]).some(p=>p[0]==='Scenery and decorations'&&p[1]>=5)],['Open an attraction',bList.some(b=>B[b.type].attr&&hasAccess(b))],['Reach ★★★★★',S.level>=5]];
   const html=items.map(([t,d])=>'<div class="'+(d?'done':'')+'">'+t+'</div>').join('');
   if($('checklist').innerHTML!==html)$('checklist').innerHTML=html;
+  renderObjectives();
+  const bl=liveBuffs(), bh=bl.length?'<div class="label" style="margin-top:4px">Active effects</div>'+bl.map(b=>'<small>'+escH(b.label)+' · '+fmtPark(b.until-nowMs())+' left</small>').join(''):'';
+  if($('buffList').innerHTML!==bh)$('buffList').innerHTML=bh;
+  $('breedT').checked=S.breed!==false;
 }
+$('breedT').onchange=e=>{S.breed=e.target.checked;log(S.breed?'Breeding allowed. Happy herds will raise young.':'Breeding paused. Keepers will collect the eggs.');};
 function builderPreview(){
   if(!tool){ghost.count=0;return;}
   if(DRAG.has(tool)&&dragA){
@@ -3910,6 +4165,7 @@ function loop(now){
     if(S.phase==='build'){
       for(const p of peeps)peepStep(p,gdt);
       for(const v of vehicles)vehStep(v,gdt);
+      monoStep(gdt);
       infoAcc+=dt; if(infoAcc>=1){infoAcc=0;if(!$('infoO').hidden)renderInfo();}
       for(const d of dinos){if(!d.escaped||!D[d.kind].carn)continue;for(let i=peeps.length-1;i>=0;i--){const p=peeps[i];if(p.mesh.position.distanceTo(d.pos)<5){peepGroup.remove(p.mesh);peeps.splice(i,1);}}}
       const pt=S.lastTod==null?bTod():S.lastTod; const nt=bTod(); S.lastTod=nt; const pd=parkDay(); if(pd>S.day){S.day=pd;newDay();}
@@ -4074,8 +4330,8 @@ function serialize(){
   for(const f of fList)F.push([f.x,f.z,Math.round(f.hp)]);
   const Bs=bList.filter(b=>b.type!=='shed').map(b=>{const ex={};if(b.express)ex.x=1;if(b.stock)ex.k=b.stock;if(b.up>1)ex.u=b.up;if(b.upEnd){ex.ue=b.upEnd;ex.ut=b.upTo;}if(b.proj)ex.p=b.proj;if(b.done)ex.d=b.done;if(b.type==='tour'){ex.j=b.jeeps;ex.t=b.tours||0;}if(b.trips){ex.tr=b.trips;ex.br=b.brought;}if(b.sales){ex.s=Math.round(b.sales);ex.r=Math.round(b.rev);}
     const row=[b.type,b.x,b.z,b.pteros?b.pteros.length:0,b.mosa?1:0];if(Object.keys(ex).length)row.push(ex);return row;});
-  const Ds=dinos.filter(d=>d.kind!=='compy').map(d=>[d.kind,d.traits,d.hybrid?1:0,d.name,d.x,d.z,d.homeX,d.homeZ]);
-  const st={};for(const k of ['money','day','visitors','peak','maint','level','instability','f','hybridCount','pendingHybrid','warned','founded','netRate','happy','recaps','genome','tech','research','exped','expCount','pt','era','eraUp','lastSpeed','zonesOpen','claims'])st[k]=S[k];
+  const Ds=dinos.filter(d=>d.kind!=='compy').map(d=>{const r=[d.kind,d.traits,d.hybrid?1:0,d.name,d.x,d.z,d.homeX,d.homeZ];if(d.baby)r.push(Math.round(d.age||0));return r;});
+  const st={};for(const k of ['money','day','visitors','peak','maint','level','instability','f','hybridCount','pendingHybrid','warned','founded','netRate','happy','recaps','genome','tech','research','exped','expCount','pt','era','eraUp','lastSpeed','zonesOpen','claims','obj','objNext','objDone','buffs','evNext','evLast','born','breedT','breed'])st[k]=S[k];
   return {v:1,wv:2,seed:SEED,at:Date.now(),s:st,cl:[...clearedSet],roads,F,B:Bs,D:Ds,cam:{tx:cam.tx,tz:cam.tz,yaw:cam.yaw,dist:cam.dist}};
 }
 function clearPark(){
@@ -4104,7 +4360,8 @@ function applySave(o){
     if(ex){if(ex.l){if(t==='harbor')b.express=1;else if(t==='shop')b.stock=ex.l;}if(ex.x)b.express=1;if(ex.k)b.stock=ex.k;if(ex.u)setLevel(b,ex.u,true);if(ex.ue){b.upEnd=ex.ue;b.upTo=ex.ut;addScaffold(b);}if(ex.p)b.proj=ex.p;if(ex.d)b.done=ex.d;if(t==='tour'){b.jeeps=ex.j||1;b.tours=ex.t||0;}if(ex.tr){b.trips=ex.tr;b.brought=ex.br||0;}if(ex.s){b.sales=ex.s;b.rev=ex.r||0;}}
     for(let i=0;i<np;i++){const m=makePtero();scene.add(m);b.pteros.push({mesh:m,ang:rand(0,6),r:rand(1,2.2),h:rand(1.4,2.4),ph:rand(0,6)});}
     if(mo){const m=makeMosa();scene.add(m);b.mosa={mesh:m,t:0,next:rand(2,5),jump:-1};}}
-  for(const [k,tr,h,n,x,z,hx,hz] of o.D){const d=spawnDino(k,tr||{},!!h,n,x,z);d.homeX=hx;d.homeZ=hz;}
+  for(const [k,tr,h,n,x,z,hx,hz,ag] of o.D){const d=spawnDino(k,tr||{},!!h,n,x,z);d.homeX=hx;d.homeZ=hz;if(ag!=null){d.baby=true;d.age=ag;d.mesh.scale.setScalar(d.st.size*babyScale(d));}}
+  S.obj=[];S.objNext=0;S.buffs=[];S.evNext=0;S.evLast=null;S.born=0;S.breedT={};S.breed=true;
   S.genome=Object.assign({},START_GENOMES); S.tech={}; S.research=null; S.exped=null; S.era=0; S.eraUp=null; S.pt=null; S.zonesOpen=[]; S.claims=0;
   Object.assign(S,o.s); S.collapsed=false;
   if(!o.s.genome){for(const d of dinos)S.genome[d.kind]=100;for(const b of bList){if(b.pteros&&b.pteros.length)S.genome.ptero=100;if(b.mosa)S.genome.mosa=100;}}
@@ -4286,7 +4543,7 @@ $('legalWipe').onclick=async()=>{
   $('legalMsg').textContent='All game data deleted.'; setTimeout(()=>location.reload(),900);
 };
 renderProfChip();
-window.__eden={startProj,projTick,advRules,advRender,advEvent,ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
+window.__eden={objTick,newObjective,OBJ,EVENTS,showEvent,evTick,breedTick,BREED,addBuff,liveBuffs,bMul,syncMono,monoRef:()=>({monoTrack,monoTrain,monoLen}),renderObjectives,placeBuilding,computeNeedsRef:()=>computeNeeds,econTick,serialize,applySave,startProj,projTick,advRules,advRender,advEvent,ZONES:()=>ZONES,zoneOf,openZone,isLocked,peepsRef:peeps,roadPath,grantClaim,setSpeed,startEra,startUpgrade,eraTick,eraReady,refreshEraLook,upgradeBlock,PROF,openBrief,warp:h=>{S.pt+=h*HOUR;},S,P,Z,cells,dinos,bList,fList,tt,crates,mercs,staff,flyers,drops,act,check,triggerCollapse,interactions,fire,addXP,setWeapon,spawnMercs,
   drag:(t,a,b)=>{tool=t;dragA=a;dragB=b;commitDrag();dragA=dragB=null;tool=null;},
   readBackups,pushBackup,fbText,techTick,computeNeeds,soundCue,addItem,magOf,openLab,cam,view,cars,vehicles,driveCar,vehStep,survUpdate,hurtEnt,PL,openInfo,closeInfo,infoAct,pickAt,enterCar,exitCar,plazaView,keys,joyRef:()=>joy,infoState:()=>infoB,
   setClock:v=>{clock=v;},getClock:()=>clock,regionOf:(x,z)=>regionId[x][z],refresh:refreshWorld,viewable:()=>viewable,roadConn:()=>roadConn};
